@@ -1,4 +1,4 @@
-package stun
+package discover
 
 import (
 	"bytes"
@@ -162,7 +162,7 @@ func (d *Discover) Client() (int16, error) {
 }
 
 //
-func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
+func (d *Discover) Sever() error {
 	// distinguish Full Cone and Restricted Cone need different IP,
 	// We can forge src IP or using two VPS(network card)
 	// note: Router usually discards forged IP packet
@@ -256,7 +256,7 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 
 			} else if step == 54 { //6
 
-				if ForgeSrcIPCanUse { //回复 7 8
+				if d.SeconNetCardIP != nil { //回复 7 8
 					// 回复 7(确保有效)
 					da[37] = 55 // 7
 					// rsfu := rawnet.SendForgeSrcIPUDP(raddr.IP, net.ParseIP(svcf.FORGESRCIP), 19987, uint16(raddr.Port), d[:38])
