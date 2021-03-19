@@ -1,7 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"STUN/internal/com"
+	"fmt"
+)
 
 func main() {
-	fmt.Println("asdsda")
+	fmt.Println(string(com.CreateUUID()))
+
 }
