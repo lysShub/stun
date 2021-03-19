@@ -1,8 +1,9 @@
 package main
 
 import (
-	"STUN/internal/com"
 	"fmt"
+
+	"github.com/lysShub/stun/internal/com"
 )
 
 func main() {
