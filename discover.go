@@ -1,4 +1,4 @@
-package STUN
+package stun
 
 import (
 	"bytes"
@@ -166,6 +166,9 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 	// distinguish Full Cone and Restricted Cone need different IP,
 	// We can forge src IP or using two VPS(network card)
 	// note: Router usually discards forged IP packet
+	if err = d.init(); err != nil {
+		return err
+	}
 
 	laddr1, err1 := net.ResolveUDPAddr("udp", ":19987")
 	laddr2, err2 := net.ResolveUDPAddr("udp", ":19988")
