@@ -1,4 +1,4 @@
-module STUN
+module github.com/lysShub/stun
 
 go 1.15
 

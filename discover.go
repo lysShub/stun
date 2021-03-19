@@ -1,13 +1,14 @@
 package STUN
 
 import (
-	"STUN/internal/com"
 	"bytes"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/lysShub/stun/internal/com"
 
 	"github.com/lysShub/kvdb"
 )
@@ -16,15 +17,33 @@ type Discover struct {
 	// NAT类型判断
 
 	// 服务器地址，IP或域名
-	Sever string
+	SeverAddr string
 	// 第一端口，sever/client须相同, 19978
 	FirstPort uint16
-	// 第二端口，sever/client须相同
+	// 第二端口，sever/client须相同, 19987
 	SecondPort uint16
+	// 第二网卡局域网IP，可选。如果不设置则不会区分IP与端口限制形NAT
+	SeconNetCardIP net.IP
+	seconConn      *net.UDPConn
 }
 
 var err error
 var errSever error = errors.New("Server is not responding")
+
+func (d *Discover) init() error {
+	if d.SeconNetCardIP != nil {
+		l, err := net.ResolveUDPAddr("udp", d.SeconNetCardIP.String()+":"+strconv.Itoa(int(d.FirstPort)))
+		if err != nil {
+			return nil
+		}
+		d.seconConn, err = net.ListenUDP("udp", l)
+		if err != nil {
+			d.seconConn = nil
+			return err
+		}
+	}
+	return nil
+}
 
 // Client client
 func (d *Discover) Client() (int16, error) {
@@ -38,7 +57,7 @@ func (d *Discover) Client() (int16, error) {
 	//  d Symmetric Cone
 	//  e Sever no response
 	//  f Exceptions
-	raddr1, err1 := net.ResolveUDPAddr("udp", d.Sever+":"+strconv.Itoa(int(d.FirstPort)))
+	raddr1, err1 := net.ResolveUDPAddr("udp", d.SeverAddr+":"+strconv.Itoa(int(d.FirstPort)))
 	laddr1, err2 := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(d.FirstPort)))
 	laddr2, err3 := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(d.SecondPort)))
 	if err = com.Errorlog(err1, err2, err3); err != nil {
@@ -160,11 +179,10 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 	var db = new(kvdb.KVDB)
 	db.Type = 0
 	db.RAMMode = true
-
-	dbh, err1 := badgerdb.OpenDb(svcf.NATDBPATH)
-	if err1 != nil {
+	if err = db.Init(); err != nil {
 		return err
 	}
+	const NatDiscover = "NatDiscover" //表名
 
 	var da []byte = make([]byte, 256)
 	var step uint16 = 0
@@ -183,20 +201,20 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 			D["step"] = []byte{1}
 			D["rIP"] = []byte(raddr.IP.String())
 			D["rPort"] = []byte(strconv.Itoa(raddr.Port))
-			err1 = badgerdb.CreatTable(string(juuid), D, dbh)
-
+			err1 = db.SetTableRow(NatDiscover, string(juuid), D)
 			D = nil
+
 			// 回复
-			d[37] = 2 //2
+			da[37] = 2 //2
 			_, err2 := lh.WriteToUDP(da[:38], raddr)
-			if com.Errorlog(err1, err2) {
+			if err = com.Errorlog(err1, err2); err != nil {
 				continue
 			}
 			fmt.Println("回复了2")
 
 		} else {
-			rPort1 := badgerdb.GetTableValue(string(juuid), "rPort", dbh)
-			rIP1 := badgerdb.GetTableValue(string(juuid), "rIP", dbh)
+			rPort1 := db.ReadTableValue(NatDiscover, string(juuid), "rPort")
+			rIP1 := db.ReadTableValue(NatDiscover, string(juuid), "rIP")
 			if rPort1 == nil || rIP1 == nil {
 				continue
 			} else if step == 3 { //3
@@ -209,24 +227,25 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 					da[37] = 4 //4
 					_, err1 = lh2.WriteToUDP(da[:38], raddr1)
 
+					time.Sleep(time.Millisecond * 300)
 					da[37] = 5 //5
 					_, err2 = lh.WriteToUDP(da[:38], raddr1)
-					if com.Errorlog(err1, err2) {
+					if err = com.Errorlog(err1, err2); err != nil {
 						continue
 					}
 				} else {
 					if raddr.Port == 19988 && string(rPort1) == "19987" { // 公网IP 9
-						err1 = badgerdb.SetTableValue(string(juuid), "type", []byte{9}, dbh)
+						err1 = db.SetTableValue(NatDiscover, string(juuid), "type", []byte{9})
 						da[37] = 9
 						_, err2 = lh.WriteToUDP(da[:38], raddr1)
-						if com.Errorlog(err1, err2) {
+						if err = com.Errorlog(err1, err2); err != nil {
 							continue
 						}
 					} else { // 对称NAT d
-						err1 = badgerdb.SetTableValue(string(juuid), "type", []byte{0xd}, dbh)
-						d[37] = 0xd
+						err1 = db.SetTableValue(NatDiscover, string(juuid), "type", []byte{0xd})
+						da[37] = 0xd
 						_, err2 = lh.WriteToUDP(da[:38], raddr1)
-						if com.Errorlog(err1, err2) {
+						if err = com.Errorlog(err1, err2); err != nil {
 							continue
 						}
 					}
@@ -237,23 +256,26 @@ func (d *Discover) Sever(ForgeSrcIPCanUse bool) error {
 				if ForgeSrcIPCanUse { //回复 7 8
 					// 回复 7(确保有效)
 					da[37] = 55 // 7
-					rsfu := rawnet.SendForgeSrcIPUDP(raddr.IP, net.ParseIP(svcf.FORGESRCIP), 19987, uint16(raddr.Port), d[:38])
+					// rsfu := rawnet.SendForgeSrcIPUDP(raddr.IP, net.ParseIP(svcf.FORGESRCIP), 19987, uint16(raddr.Port), d[:38])
 
+					_, err = d.seconConn.WriteToUDP(da[:18], raddr)
+					if err = com.Errorlog(err); err != nil {
+						continue
+					}
 					// 回复8
-					if rsfu {
-						da[37] = 56 //8
-						_, err1 = lh.WriteToUDP(d[:38], raddr)
-						if com.Errorlog(err1) {
-							continue
-						}
+					da[37] = 56 //8
+					_, err1 = lh.WriteToUDP(da[:38], raddr)
+					if err = com.Errorlog(err1); err != nil {
+						continue
 					}
 
 				} else {
-					badgerdb.SetTableValue(string(juuid), "type", []byte{6}, dbh)
+					db.SetTableValue(NatDiscover, string(juuid), "type", []byte{6})
 				}
 
 			} else if step == 0xa || step == 0xb || step == 0xc { //a b c
-				badgerdb.SetTableValue(string(juuid), "type", []byte{uint8(step)}, dbh)
+
+				db.SetTableValue(NatDiscover, string(juuid), "type", []byte{uint8(step)})
 			}
 		}
 

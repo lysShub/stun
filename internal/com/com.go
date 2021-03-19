@@ -1,12 +1,15 @@
 package com
 
 import (
+	"fmt"
+
 	uuid "github.com/satori/go.uuid"
 )
 
 func Errorlog(errs ...error) error {
 	for _, v := range errs {
 		if v != nil {
+			fmt.Println(v)
 			return v
 		}
 	}
