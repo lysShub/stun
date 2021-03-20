@@ -131,6 +131,7 @@ func (s *STUN) Sever() error {
 			if err = s.discoverSever(da[:n], raddr); com.Errorlog(err) {
 				continue
 			}
+
 		} else if da[0] == '?' {
 
 		}
