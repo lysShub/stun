@@ -1,4 +1,4 @@
-package test
+package main
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/lysShub/stun/internal/discover"
 )
 
-func Test() {
+func main() {
 	var d = new(discover.Discover)
 	d.FirstPort = 19986
 	d.SecondPort = 19987
