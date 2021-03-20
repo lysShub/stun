@@ -71,9 +71,9 @@ func (s *STUN) Init(isClient bool) error {
 			if err != nil {
 				return err
 			}
-			s.conn, err = net.DialUDP("udp", l, r)
+			s.conn2, err = net.DialUDP("udp", l, r)
 			if err != nil {
-				s.conn = nil
+				s.conn2 = nil
 				return err
 			}
 		} else {
@@ -177,7 +177,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 		}
 		fmt.Println("回复了2")
 
-	} else if step == 2 { // 其他
+	} else {
 		rPort := s.db.ReadTableValue(s.dbDiscover, string(juuid), "rPort")
 		if rPort == nil {
 			fmt.Println("无法获取到数据库记录")
@@ -269,7 +269,8 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 }
 
 // Client client
-func (s *STUN) discoverClient() (int16, error) {
+func (s *STUN) DiscoverClient() (int16, error) {
+
 	// return code:
 	// -1 error
 	//  6 Full Cone or Restricted Cone
@@ -297,6 +298,7 @@ func (s *STUN) discoverClient() (int16, error) {
 	if err != nil {
 		return -1, err
 	}
+	fmt.Println("发送1")
 
 	// 收Juuid:2
 	err = s.conn.SetReadDeadline(time.Now().Add(time.Second))
@@ -304,48 +306,53 @@ func (s *STUN) discoverClient() (int16, error) {
 		return -1, err
 	}
 	_, err = s.conn.Read(da)
+
 	if err != nil { //超时 服务器没有回复
 		return 0xe, errSever
 
-	} else if !bytes.Equal(da[:18], juuid) || da[18] != 2 { // 异常
-		return -1, errors.New("Exceptions: need Juuid2, instead " + string(da[:19]))
+	} else if !bytes.Equal(da[:17], juuid) || da[17] != 2 { // 异常
+		fmt.Println("step", da[17])
+		return -1, errors.New("Exceptions: need Juuid2, instead " + string(da[:18]))
 	}
 	fmt.Println("收到2")
 
 	// 第二端口发Juuid:3
-	da[18] = 3
-	_, err = s.conn2.Write(da[:19])
+	da[17] = 3
+	_, err = s.conn2.Write(da[:18])
 	if err != nil {
 		return -1, err
 	}
-
+	a := time.Now().UnixNano()
 	// 收Juuid:9 或 Juuid:d 或 Juuid:5(收不到4) 或 Juuid:4(接下来应收到5)
-	err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+	err = s.conn.SetReadDeadline(time.Now().Add(time.Second))
 	if err != nil {
 		return -1, err
 	}
 	_, err = s.conn.Read(da)
+	b := time.Now().UnixNano()
+	fmt.Println((b - a) / 1e6)
+
 	if err != nil {
 		return -1, err
 	}
 
-	fmt.Println("收到", string(da[18]))
+	fmt.Println("收到", string(da[17]))
 
-	if bytes.Equal(da[:18], juuid) && da[18] == 9 { //公网IP
+	if bytes.Equal(da[:17], juuid) && da[17] == 9 { //公网IP
 		return 9, nil
 
-	} else if bytes.Equal(da[:18], juuid) && da[18] == 0xd { //对称NAT
+	} else if bytes.Equal(da[:17], juuid) && da[17] == 0xd { //对称NAT
 		return 0xd, nil
 
-	} else if bytes.Equal(da[:18], juuid) && da[18] == 5 { //收到5且收不到4 端口限制nat
+	} else if bytes.Equal(da[:17], juuid) && da[17] == 5 { //收到5且收不到4 端口限制nat
 
 		// 收不到4
 		// 回复
-		da[18] = 0xc
+		da[17] = 0xc
 		_, _ = s.conn.Write(da[:38])
 		return 0xc, nil
 
-	} else if bytes.Equal(da[:18], juuid) && da[18] == 4 { //收到4
+	} else if bytes.Equal(da[:17], juuid) && da[17] == 4 { //收到4
 		// 收 5
 		err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
 		if err != nil {
@@ -355,7 +362,7 @@ func (s *STUN) discoverClient() (int16, error) {
 		if err != nil {
 			return 0xe, errSever
 		}
-		if bytes.Equal(da[:18], juuid) && da[18] == 5 { // 完全或IP限制锥形NAT
+		if bytes.Equal(da[:17], juuid) && da[17] == 5 { // 完全或IP限制锥形NAT
 			// 收 第二IP的包Juuid:7 或 Juuid:8 或 超时(没有区分)
 
 			err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
@@ -369,7 +376,7 @@ func (s *STUN) discoverClient() (int16, error) {
 				}
 				return 0, err
 
-			} else if bytes.Equal(da[:18], juuid) && da[18] == 8 { // 收到8，
+			} else if bytes.Equal(da[:17], juuid) && da[17] == 8 { // 收到8，
 
 				// 收7(由于UDP不保证数据包到达顺序)
 				err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
@@ -377,20 +384,20 @@ func (s *STUN) discoverClient() (int16, error) {
 					return 0, err
 				}
 				_, err = s.conn.Read(da)
-				if err == nil && da[18] == 7 {
-					da[18] = 0xa
+				if err == nil && da[17] == 7 {
+					da[17] = 0xa
 					s.conn.Write(da[:38])
 					return 0xa, nil //完全限制锥形
 				}
 
 				// 回复
-				da[18] = 0xb
+				da[17] = 0xb
 				s.conn.Write(da[:38])
 				return 0xb, nil // IP限制锥形
 
-			} else if bytes.Equal(da[:18], juuid) && da[18] == 7 { //收到7
+			} else if bytes.Equal(da[:17], juuid) && da[17] == 7 { //收到7
 				// 不用再接收8，已经收到7，确定为完全锥形
-				da[18] = 0xa
+				da[17] = 0xa
 				s.conn.Write(da[:38])
 				return 0xa, nil //完全锥形
 			}
