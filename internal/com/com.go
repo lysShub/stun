@@ -6,14 +6,16 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-func Errorlog(errs ...error) error {
+func Errorlog(errs ...error) bool {
+	var flag bool = false
 	for _, v := range errs {
 		if v != nil {
+			// log
 			fmt.Println(v)
-			return v
+			flag = true
 		}
 	}
-	return nil
+	return flag
 }
 
 // CreateUUID 生成id

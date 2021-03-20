@@ -23,7 +23,7 @@ github.com/dustin/go-humanize
 github.com/golang/protobuf/proto
 # github.com/golang/snappy v0.0.1
 github.com/golang/snappy
-# github.com/lysShub/kvdb v0.0.0-20210318153352-2b049faf4c90
+# github.com/lysShub/kvdb v0.0.0-20210319023150-6b86c34ad4b8
 ## explicit
 github.com/lysShub/kvdb
 github.com/lysShub/kvdb/badgerdb
