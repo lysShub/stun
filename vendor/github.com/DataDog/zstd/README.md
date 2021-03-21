@@ -1,9 +1,13 @@
 # Zstd Go Wrapper
 
-[C Zstd Homepage](https://github.com/Cyan4973/zstd)
+[![CircleCI](https://circleci.com/gh/DataDog/zstd/tree/1.x.svg?style=svg)](https://circleci.com/gh/DataDog/zstd/tree/1.x)
+[![GoDoc](https://godoc.org/github.com/DataDog/zstd?status.svg)](https://godoc.org/github.com/DataDog/zstd)
 
-The current headers and C files are from *v1.4.1* (Commit
-[52181f8](https://github.com/facebook/zstd/releases/tag/v1.4.1)).
+
+[C Zstd Homepage](https://github.com/facebook/zstd)
+
+The current headers and C files are from *v1.4.4* (Commit
+[10f0e699](https://github.com/facebook/zstd/releases/tag/v1.4.4)).
 
 ## Usage
 
@@ -55,6 +59,9 @@ NewWriterLevelDict(w io.Writer, level int, dict []byte) *Writer
 
 // Write compresses the input data and write it to the underlying writer
 (w *Writer) Write(p []byte) (int, error)
+
+// Flush writes any unwritten data to the underlying writer
+(w *Writer) Flush() error
 
 // Close flushes the buffer and frees C zstd objects
 (w *Writer) Close() error

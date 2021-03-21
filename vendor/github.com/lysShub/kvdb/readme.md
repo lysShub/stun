@@ -1,8 +1,8 @@
 # Golang key/Value database api
 
+**[EN](https://github.com/lysShub/kvdb/blob/master/readme_en.md)**
 
-
-Golang的key/value 储存可以在无SQL的情况下实现数据的存储，在部分场景下非常优雅，但是通常只有键值对形式的存储。在本仓库中，对api进行了统一，有单纯的键值对存储，还有间接实现的以表的结构的储存。本仓库集成了以下key/value数据库：
+Golang的key/value 储存可以在无SQL的情况下实现数据的存储，在部分场景下使用非常优雅，但是通常只有键值对形式的存储。在本仓库中，对api进行了统一，有单纯的键值对存储，还有间接实现的以表的结构的储存。本仓库集成了以下数据库：
 
 - [badgerdb](https://github.com/dgraph-io/badger/v2)
 - [boltdb](https://github.com/boltdb/bolt)
@@ -13,20 +13,27 @@ badger通过前缀实现表的结构，boltdb通过bucket嵌套实现表的结�
 
 ### Start
 
-GO111MODULE=on
+**GO111MODULE=on**
 
-```shell
-git clone https://github.com/lysShub/kvdb.git
-cd ./kvdb/test
+```go
+go get github.com/lysShub/kvdb
+```
+
+```go
+cd %GOPATH%/src/github.com/lysShub/kvdb/test
 go build -o test test.go
 ./test
 ```
+
+
+
 
 ### 如何选择
 
 - 性能
 
 ```shell
+# go test -bench=.
 goos: windows
 goarch: amd64
 pkg: kvdb/test/test_prop

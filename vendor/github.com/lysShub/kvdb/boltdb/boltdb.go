@@ -288,6 +288,31 @@ func (d *Bolt) ReadTableRow(tableName, id string) map[string][]byte {
 	return r
 }
 
+// ReadTableRowExist
+func (d *Bolt) ReadTableRowExist(tableName, id string) bool {
+	var r bool = false
+	_ = d.DbHandle.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(tableName))
+		if b == nil {
+			r = false
+			return nil
+		}
+		sb := b.Bucket([]byte(id))
+		if sb == nil {
+			r = false
+			return nil
+		}
+		c := sb.Cursor()
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			r = true
+			break
+		}
+		return nil
+	})
+	return r
+
+}
+
 // ReadTableValue
 func (d *Bolt) ReadTableValue(tableName, id, field string) []byte {
 	var r []byte

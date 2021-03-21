@@ -16,34 +16,32 @@ type Handle struct {
 
 // key/value database
 type KVDB struct {
-	// 有表结构存储；badger是使用前缀实现的，boltdb是使用桶嵌套实现的
-	// 也有简单的key/value键值对储存；badger是没有前缀存储，boltdb是存储在特定的一个桶中
-	// 在表中，每一条记录都有一此表中唯一id将各项字段联系起来，类似主键
+	// have simple key value pair struct store
+	// alse have table struct store; badger using prefix and boltdb using bucket nesting
+	// in table, you need a id for a "row", similar "PrimaryKey"
+	// all "name"(tableName,id,field) are string type, and all "value" are []byte type
 
-	// 必须 0:badgerdb; 1:boltdb
+	// must set; 0:badgerdb; 1:boltdb
 	Type uint8
-	// 只设置Type，Init将以默认参数打开
+	// database handle
 	DH Handle
-	// 默认当前路径，badger是文件夹，boltdb是文件
+	// default local path，badger is floder，boltdb id file
 	Path string
-	/* 仅badgerdb */
-	// 密码，默认无
+	/* only for badgerdb */
+	// password，default not have(nil)
 	Password [16]byte
-	// 内存模式、性能高很多，默认false
+	// In memory mod, higher performance，default false
 	RAMMode bool
-	//分割符，默认`
+	//delimit string, tableName and id can't contain it ;default ```
 	Delimiter string
-	/* 仅boltdb */
-	// 键值储存bucket名，默认_root
+	/* only for boltdb */
+	//key/value store's bucket name, default _root
 	Root []byte
 }
 
-// 将操作与预期不符将返回错误；如删除表中某一条记录，但此表不存在，将不会有错误信息返回
-// 所有字段名使用string，所有值使用[]byte
-
 var errType error = errors.New("kvdb.go: invalid value of KVDB.Type")
 
-// 初始化函数
+// Init init function
 func (d *KVDB) Init() error {
 	if d.Type == 0 { //badgerdb
 		var b = new(badgerdb.Badger)
@@ -79,9 +77,9 @@ func (d *KVDB) Close() {
 	return
 }
 
-// key/value 操作
+// key/value operations
 
-// SetKey 设置/修改一个值
+// SetKey create/update a value
 func (d *KVDB) SetKey(key string, value []byte, ttl ...time.Duration) error {
 	if d.Type == 0 {
 		return d.DH.bg.SetKey(key, value)
@@ -91,7 +89,7 @@ func (d *KVDB) SetKey(key string, value []byte, ttl ...time.Duration) error {
 	return errType
 }
 
-// DeleteKey 删除一个值
+// DeleteKey delete a value
 func (d *KVDB) DeleteKey(key string) error {
 	if d.Type == 0 {
 		return d.DH.bg.DeleteKey(key)
@@ -101,7 +99,7 @@ func (d *KVDB) DeleteKey(key string) error {
 	return errType
 }
 
-// ReadKey 读取一个值
+// ReadKey read a value
 func (d *KVDB) ReadKey(key string) []byte {
 	if d.Type == 0 {
 		return d.DH.bg.ReadKey(key)
@@ -111,9 +109,9 @@ func (d *KVDB) ReadKey(key string) []byte {
 	return nil
 }
 
-// 表操作
+// table operations
 
-// SetTable 设置/修改一个表
+// SetTable create/update a table
 func (d *KVDB) SetTable(tableName string, p map[string]map[string][]byte, ttl ...time.Duration) error {
 	if d.Type == 0 {
 		return d.DH.bg.SetTable(tableName, p)
@@ -123,7 +121,7 @@ func (d *KVDB) SetTable(tableName string, p map[string]map[string][]byte, ttl ..
 	return errType
 }
 
-// SetTableRow 设置/修改一个表中的一条记录
+// SetTableRow create/update a record in a table
 func (d *KVDB) SetTableRow(tableName, id string, p map[string][]byte, ttl ...time.Duration) error {
 	if d.Type == 0 {
 		return d.DH.bg.SetTableRow(tableName, id, p)
@@ -133,7 +131,7 @@ func (d *KVDB) SetTableRow(tableName, id string, p map[string][]byte, ttl ...tim
 	return errType
 }
 
-// SetTableValue 设置/修改一个表中的一条记录的某个字段的值
+// SetTableValue create/update some one field's value in a table's some one record
 func (d *KVDB) SetTableValue(tableName, id, field string, value []byte, ttl ...time.Duration) error {
 	if d.Type == 0 {
 		return d.DH.bg.SetTableValue(tableName, id, field, value)
@@ -143,7 +141,7 @@ func (d *KVDB) SetTableValue(tableName, id, field string, value []byte, ttl ...t
 	return errType
 }
 
-// DeleteTable 删除一个表
+// DeleteTable deleta a teble
 func (d *KVDB) DeleteTable(tableName string) error {
 	if d.Type == 0 {
 		return d.DH.bg.DeleteTable(tableName)
@@ -153,7 +151,7 @@ func (d *KVDB) DeleteTable(tableName string) error {
 	return errType
 }
 
-// DeleteTableRow 删除表中的某条记录
+// DeleteTableRow delete some one record in a table
 func (d *KVDB) DeleteTableRow(tableName, id string) error {
 	if d.Type == 0 {
 		return d.DH.bg.DeleteTableRow(tableName, id)
@@ -163,7 +161,7 @@ func (d *KVDB) DeleteTableRow(tableName, id string) error {
 	return errType
 }
 
-// ReadTable 读取一个表中所有数据
+// ReadTable read all date in a table
 func (d *KVDB) ReadTable(tableName string) map[string]map[string][]byte {
 	if d.Type == 0 {
 		return d.DH.bg.ReadTable(tableName)
@@ -173,7 +171,7 @@ func (d *KVDB) ReadTable(tableName string) map[string]map[string][]byte {
 	return nil
 }
 
-// ReadTableExist 表是否存在
+// ReadTableExist judge the table is exist
 func (d *KVDB) ReadTableExist(tableName string) bool {
 	if d.Type == 0 {
 		return d.DH.bg.ReadTableExist(tableName)
@@ -183,7 +181,7 @@ func (d *KVDB) ReadTableExist(tableName string) bool {
 	return false
 }
 
-// ReadTableRow 读取表中一条记录
+// ReadTableRow read a record in a table
 func (d *KVDB) ReadTableRow(tableName, id string) map[string][]byte {
 	if d.Type == 0 {
 		return d.DH.bg.ReadTableRow(tableName, id)
@@ -193,7 +191,17 @@ func (d *KVDB) ReadTableRow(tableName, id string) map[string][]byte {
 	return nil
 }
 
-// ReadTableValue 读取表中一条记录的某个字段值
+// ReadTableRowExist judge a record is exist in a table
+func (d *KVDB) ReadTableRowExist(tableName, id string) bool {
+	if d.Type == 0 {
+		return d.DH.bg.ReadTableRowExist(tableName, id)
+	} else if d.Type == 1 {
+		return d.DH.bt.ReadTableRowExist(tableName, id)
+	}
+	return false
+}
+
+// ReadTableValue read a field's value of some one record in a table
 func (d *KVDB) ReadTableValue(tableName, id, field string) []byte {
 	if d.Type == 0 {
 		return d.DH.bg.ReadTableValue(tableName, id, field)
@@ -203,7 +211,7 @@ func (d *KVDB) ReadTableValue(tableName, id, field string) []byte {
 	return nil
 }
 
-// ReadTableLimits 获取表中满足条件的所有id
+// ReadTableLimits get all id that meeting the conditions
 func (d *KVDB) ReadTableLimits(tableName, field, exp string, value int) []string {
 	if d.Type == 0 {
 		return d.DH.bg.ReadTableLimits(tableName, field, exp, value)

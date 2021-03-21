@@ -29,11 +29,14 @@ type STUN struct {
 	SecondNetCardIP net.IP
 	secondIPConn    *net.UDPConn // 第二IP的第一端口的conn
 	dbDiscover      string       // NAT类型判断的数据表名
+
+	/* NAT穿隧 */
+	dbThrough string // NAT穿透数据表名
 }
 
 func (s *STUN) Init(isClient bool) error {
-
 	s.dbDiscover = "discover"
+	s.dbThrough = "through"
 	if s.Port != 0 {
 		if isClient { // 客户端
 			l, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
@@ -144,15 +147,9 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	var step uint16 = 0
 	var juuid []byte = nil
 
-	/*
-
-
-
-	 */
-
 	fmt.Println("收到数据", raddr.IP)
 	if len(da) != 18 {
-		fmt.Println("接收到长度不为18，为", len(da))
+		fmt.Println("接收到长度不为18,为", len(da))
 		return nil
 	}
 	step = uint16(da[17])
@@ -225,7 +222,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 					if err != nil {
 						return err
 					}
-					da[37] = 0xd
+					da[17] = 0xd
 					_, err = s.conn.WriteToUDP(da[:18], raddr1)
 					if err != nil {
 						return err
@@ -268,7 +265,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	return nil
 }
 
-// Client client
+// DiscoverClient
 func (s *STUN) DiscoverClient() (int16, error) {
 
 	// return code:
@@ -299,14 +296,15 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		return -1, err
 	}
 	fmt.Println("发送1")
-
+	a := time.Now().UnixNano()
 	// 收Juuid:2
-	err = s.conn.SetReadDeadline(time.Now().Add(time.Second))
+	err = s.conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 	if err != nil {
 		return -1, err
 	}
 	_, err = s.conn.Read(da)
-
+	b := time.Now().UnixNano()
+	fmt.Println("接收2等待", (b-a)/1e6)
 	if err != nil { //超时 服务器没有回复
 		return 0xe, errSever
 
@@ -322,15 +320,15 @@ func (s *STUN) DiscoverClient() (int16, error) {
 	if err != nil {
 		return -1, err
 	}
-	a := time.Now().UnixNano()
+	a = time.Now().UnixNano()
 	// 收Juuid:9 或 Juuid:d 或 Juuid:5(收不到4) 或 Juuid:4(接下来应收到5)
 	err = s.conn.SetReadDeadline(time.Now().Add(time.Second))
 	if err != nil {
 		return -1, err
 	}
 	_, err = s.conn.Read(da)
-	b := time.Now().UnixNano()
-	fmt.Println((b - a) / 1e6)
+	b = time.Now().UnixNano()
+	fmt.Println("发送3后等待", (b-a)/1e6)
 
 	if err != nil {
 		return -1, err
@@ -406,4 +404,135 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		}
 	}
 	return 0xf, nil
+}
+
+// throughSever
+func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
+
+	if len(da) != 18 {
+		fmt.Println("长度不为18")
+		return nil
+	}
+	if da[17] == 1 {
+		tuuid := da[:17]
+		if s.db.ReadTableRowExist(s.dbThrough, string(tuuid)) { //已存在第一条记录,记录第二条
+			err = s.db.SetTableValue(s.dbThrough, string(tuuid), "ip2", []byte{
+				raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15],
+			})
+			com.Errorlog(err)
+			err = s.db.SetTableValue(s.dbThrough, string(tuuid), "port2", []byte(strconv.Itoa(raddr.Port)))
+			com.Errorlog(err)
+
+			// 回复
+			var ip1 []byte = s.db.ReadTableValue(s.dbThrough, string(tuuid), "ip1")
+			if ip1 == nil {
+				com.Errorlog(errors.New("can't read ip1, tuuid is:" + visibleSlice(tuuid)))
+				return nil
+			}
+			var port1 []byte = s.db.ReadTableValue(s.dbThrough, string(tuuid), "port1")
+			// 回复当前
+			bn := append(tuuid, 2, raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port), ip1[0], ip1[2], ip1[3], ip1[4], port1[0], port1[1])
+			s.conn.WriteToUDP(bn, raddr)
+			// 回复之前
+			bb := append(tuuid, 2, ip1[0], ip1[2], ip1[3], ip1[4], port1[0], port1[1], raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port))
+			raddr2, err := net.ResolveUDPAddr("udp", string(ip1)+":"+string(string(port1)))
+			if com.Errorlog(err) {
+				return nil
+			}
+			laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
+			if com.Errorlog(err) {
+				return nil
+			}
+			conn, err := net.DialUDP("udp", laddr, raddr2)
+			if com.Errorlog(err) {
+				return nil
+			}
+			defer conn.Close()
+			_, err = conn.Write(bb)
+			if com.Errorlog(err) {
+				return nil
+			}
+
+		} else {
+			err = s.db.SetTableValue(s.dbThrough, string(tuuid), "ip1", []byte{
+				raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15],
+			})
+			com.Errorlog(err)
+			err = s.db.SetTableValue(s.dbThrough, string(tuuid), "port1", []byte(strconv.Itoa(raddr.Port)))
+			com.Errorlog(err)
+		}
+	} else {
+		// 不可能
+
+	}
+
+	return nil
+}
+
+func (s *STUN) throughClient(tuuid []byte) error {
+
+	_, err = s.conn.Write(tuuid)
+	if err != nil {
+		return err
+	}
+
+	var b []byte = make([]byte, 512)
+	for i := 0; i <= 6; i++ { // 等待5s
+		err = s.conn.SetReadDeadline(time.Now().Add(time.Second * 1))
+		if err != nil {
+			return err
+		}
+		_, err = s.conn.Read(b)
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(b[:17], tuuid) {
+			break
+		} else if i == 6 {
+			return errors.New("sever no reply")
+		}
+	}
+
+	// lip := net.ParseIP(string(b[18:23]))
+	// lport := int(b[23])<<8 + int(b[24])
+	rip := net.ParseIP(string(b[24:29]))
+	rport := int(b[29])<<8 + int(b[30])
+
+	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
+	if err != nil {
+		return err
+	}
+	var conns [5]*net.UDPConn
+	for i := 0; i < 5; i++ {
+		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport))
+		if err != nil {
+			return err
+		}
+		conn, err := net.DialUDP("udp", laddr, raddr)
+		if err != nil {
+			return err
+		}
+		conns[i] = conn
+	}
+
+	// 繁杂操作
+
+	return nil
+}
+
+/* other function */
+
+func visibleSlice(b []byte) string {
+	var r string
+	for _, v := range b {
+		r = r + strconv.Itoa(v) + ""
+	}
+	return r
+}
+func byteToint(b []byte) int {
+	var r, l int = 0, len(b)
+	for i, v := range b {
+		r = r + int(v)<<(8*(l-i-1))
+	}
+	return r
 }

@@ -22,7 +22,7 @@ type Badger struct {
 	Path      string   //储存路径，默认路径文当前路径db文件夹
 	Password  [16]byte //密码，默认无密码
 	RAM       bool     //内存模式，默认false
-	Delimiter string   //分割符，默认为字符`
+	Delimiter string   //分割符，默认为字符```
 }
 
 var errStr error = errors.New("can not include delimiter character")
@@ -72,7 +72,7 @@ func (d *Badger) OpenDb() error {
 		opts.EncryptionKey = d.Password[:]
 	}
 	if d.Delimiter == "" {
-		d.Delimiter = "`"
+		d.Delimiter = "```"
 	}
 	opts.ValueLogFileSize = 1 << 29 //512MB
 
@@ -371,6 +371,26 @@ func (d *Badger) ReadTableRow(tableName, id string) map[string][]byte {
 	}
 	it.Close()
 
+	return r
+}
+
+// ReadTableRowExist
+func (d *Badger) ReadTableRowExist(tableName, id string) bool {
+	if !d.checkkey(tableName, id) {
+		return false
+	}
+
+	txn := d.DbHandle.NewTransaction(false)
+	it := txn.NewIterator(badger.DefaultIteratorOptions)
+	defer txn.Discard()
+
+	prefix := []byte(tableName + d.Delimiter + id + d.Delimiter)
+	var r bool = false
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		r = true
+		break
+	}
+	it.Close()
 	return r
 }
 

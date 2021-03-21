@@ -1,6 +1,7 @@
 package com
 
 import (
+	"bytes"
 	"fmt"
 
 	uuid "github.com/satori/go.uuid"
@@ -21,5 +22,11 @@ func Errorlog(errs ...error) bool {
 // CreateUUID 生成id
 // 16字节
 func CreateUUID() []byte {
-	return uuid.Must(uuid.NewV4(), nil).Bytes()
+	var r []byte
+	for {
+		r = uuid.Must(uuid.NewV4(), nil).Bytes()
+		if !bytes.Contains(r, []byte("`")) {
+			return r
+		}
+	}
 }
