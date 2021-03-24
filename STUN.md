@@ -34,14 +34,14 @@ NAT类型判断是穿隧的第一步。
 
 | 序号                       | 发送者       | 接收者       | 数据    | 说明                                                         |
 | -------------------------- | ------------ | ------------ | ------- | ------------------------------------------------------------ |
-| 1                          | client:19987 | sever:19987  | Juuid:1 | 表示开始一次NAT判断，sever保存Juuid、对方网关端口            |
+| 1                          | client:19987 | sever:19987  | Juuid:1 | 开始，sever应保存Juuid、对方网关端口                         |
 | 2                          | sever:19987  | client:19987 | Juuid:2 | sever回复client，client接下来将执行3                         |
-| 3                          | client:19988 | sever:19987  | Juuid:3 | sever比较两次的网关端口是否相等。相等需要进一步判断(能否收到4)；不相等则有对称形NAT和公网IP两种情况，如果两次的网关端口为19987和19988则为公网IP(9)，否则为对称NAT(d)。 |
-| 4                          | sever:19988  | client:19987 | Juuid:4 | sever使用19988端口进行回复，client不能能收到则表示为端口限制形NAT(c)，否则为完全或IP限制锥形NAT(6) |
+| 3                          | client:19988 | sever:19987  | Juuid:3 | client使用的第二端口回复sever, sever比较两次请求的网关端口是否相等。相等需要进一步判断(能否收到4)。不相等则有对称形NAT和公网IP两种情况，如果两次请求的网关端口和设定端口相同为公网IP(9)，否则为对称NAT(d)。 |
+| 4                          | sever:19988  | client:19987 | Juuid:4 | sever使用第二端口进行回复，client不能收到则表示为端口限制形NAT(c)，否则为完全或IP限制锥形NAT(6) |
 | 5                          | sever:19987  | client:19987 | Juuid:5 | 表示服务器执行了4                                            |
 | <font color='red'>6</font> | client:19987 | sever:19987  | Juuid:6 | 收到5且收到4，为完全或IP限制锥形NAT，如须进一步区分、执行7,8 |
-| 7                          | sever2:19987 | client:19987 | Juuid:7 | 用于区分完全和IP限制锥形NAT(sever2的IP与sever不同)           |
-| 8                          | sever:19987  | client:19987 | Juuid:8 | 表示服务器执行了7(由于7可选，所以没有收到8表示不用区分，返回6即可) |
+| 7                          | sever2:19987 | client:19987 | Juuid:7 | 可选，sever使用第二IP回复client                              |
+| 8                          | sever:19987  | client:19987 | Juuid:8 | 可选，表示服务器执行了7                                      |
 | <font color='red'>9</font> | sever:19987  | client:19987 | Juuid:9 | 公网IP                                                       |
 | <font color='red'>a</font> | client:19987 | sever:19987  | Juuid:a | client收到8且收到7，完全锥形nat                              |
 | <font color='red'>b</font> | client:19987 | sever:19987  | Juuid:b | client收到8且没有收到7，IP限制形nat                          |
@@ -50,7 +50,7 @@ NAT类型判断是穿隧的第一步。
 | <font color='red'>e</font> | client:19987 | sever:19987  | Juuid:e | 执行1后没有收到2，可能服务器关闭（无意义）                   |
 | <font color='red'>f</font> | client:19987 | sever:19987  | Juuid:e | 异常情况，比如收到7但没有收到8，收到4但没有收到5等情况       |
 
-说明：红色即是返回值；Juuid 为判断id，由‘J'加位随128机组成。对完全和IP限制锥形NAT的判断是可选的，因为在穿透是没有区别、且区分需要两个网卡(公网IP)；不区分返回6，区分返回a或b。
+说明：红色即是返回值。对完全和IP限制锥形NAT的判断是可选的，如果区分需要两个网卡(公网IP)；不区分返回6，区分返回a或b。由于UDP不可靠，sever的每次回复多个相同的数据包
 
 
 

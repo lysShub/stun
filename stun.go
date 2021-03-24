@@ -144,15 +144,17 @@ func (s *STUN) Sever() error {
 
 // DiscoverSever
 func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
-
+	var t int = 4
 	var step uint16 = 0
-	var juuid []byte = nil
-
-	/*
-
-
-
-	 */
+	var juuid, rIP, rPort []byte
+	var mS = func(raddr *net.UDPAddr) error {
+		for i := 0; i < 5; i++ {
+			if _, err = s.conn.WriteToUDP(da[:18], raddr); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	if len(da) != 18 {
 		fmt.Println("接收到长度不为18，为", len(da))
@@ -162,84 +164,77 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	juuid = da[:17]
 
 	if step == 1 { //1 开始
+
 		fmt.Println("收到1")
 		var D map[string][]byte = make(map[string][]byte)
 		D["step"] = []byte{1}
 		D["rIP"] = []byte(raddr.IP.String())
 		D["rPort"] = []byte(strconv.Itoa(raddr.Port))
-		err = s.db.SetTableRow(s.dbDiscover, string(juuid), D)
-		if err != nil {
+		if err = s.db.SetTableRow(s.dbDiscover, string(juuid), D); err != nil {
 			return err
 		}
-		D = nil
 
 		// 回复
 		da[17] = 2 //2
-		_, err := s.conn.WriteToUDP(da[:18], raddr)
-		if err != nil {
+		if err = mS(raddr); err != nil {
 			return err
 		}
 		fmt.Println("回复了2", raddr)
 
 	} else {
-		rPort := s.db.ReadTableValue(s.dbDiscover, string(juuid), "rPort")
-		if rPort == nil {
+
+		if rPort = s.db.ReadTableValue(s.dbDiscover, string(juuid), "rPort"); rPort == nil {
 			fmt.Println("无法获取到数据库记录")
 			return nil
 		}
-		rIP := s.db.ReadTableValue(s.dbDiscover, string(juuid), "rIP")
-		if rIP == nil {
+		if rIP = s.db.ReadTableValue(s.dbDiscover, string(juuid), "rIP"); rIP == nil {
 			fmt.Println("无法获取到数据库记录")
 			return nil
 		}
 
 		if step == 3 { //3
 			fmt.Println("收到3")
-			raddr1, err := net.ResolveUDPAddr("udp", string(rIP)+":"+string(rPort))
-			if err != nil {
+
+			var raddr1 *net.UDPAddr
+			if raddr1, err = net.ResolveUDPAddr("udp", string(rIP)+":"+string(rPort)); err != nil {
 				return err
 			}
 
-			if strconv.Itoa(raddr.Port) != string(rPort) { //两次请求端口不同，需进一步判断 回复4和5
-				fmt.Println("两次请求端口不同，需进一步判断 回复4和5")
-				da[17] = 4 //4
+			if strconv.Itoa(raddr.Port) == string(rPort) { //两次请求端口相同，需进一步判断 回复4和5
+				fmt.Println("两次请求端口相同，需进一步判断 回复4和5")
 				fmt.Println("第二端口回复4")
 
-				_, err = s.conn2.WriteToUDP(da[:18], raddr1)
-				if err != nil {
+				da[17] = 4 //4
+				if err = mS(raddr1); err != nil {
 					return err
 				}
 
-				time.Sleep(time.Millisecond * 300)
-				fmt.Println("延时后回复5")
+				fmt.Println("回复5")
 				da[17] = 5 //5
-				_, err = s.conn.WriteToUDP(da[:18], raddr1)
-				if err != nil {
+				if err = mS(raddr1); err != nil {
 					return err
 				}
+
 			} else {
-				fmt.Println("两次请求端口相同，公网IP或对称NAT")
+				fmt.Println("两次请求端口不同，公网IP或对称NAT")
 				if raddr.Port == int(s.Port) && string(rPort) == strconv.Itoa(int(s.SecondPort)) { // 两次端口与预定义端口相对，公网IP 9
+
 					fmt.Println("两次端口与预定义端口相同,公网IP，回复9")
-					err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{9})
-					if err != nil {
+					if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{9}); err != nil {
 						return err
 					}
 					da[17] = 9
-					_, err = s.conn.WriteToUDP(da[:18], raddr1)
-					if err != nil {
+					if err = mS(raddr1); err != nil {
 						return err
 					}
 
 				} else { // 对称NAT d
 					fmt.Println("对称NAT,回复d")
-					err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{0xd})
-					if err != nil {
+					if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{0xd}); err != nil {
 						return err
 					}
 					da[17] = 0xd
-					_, err = s.conn.WriteToUDP(da[:18], raddr1)
-					if err != nil {
+					if err = mS(raddr1); err != nil {
 						return err
 					}
 				}
@@ -247,35 +242,36 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 
 		} else if step == 6 {
 			fmt.Println("收到6")
+
 			if s.secondIPConn != nil { //回复 7 8
 				fmt.Println("需要区分IP和端口")
 				// 回复 7(确保有效)
 				fmt.Println("第二IP回复7")
 				da[17] = 7
-				_, err = s.secondIPConn.WriteToUDP(da[:18], raddr)
-				if err != nil {
-					return err
+				for i := 0; i < t; i++ {
+					if _, err = s.secondIPConn.WriteToUDP(da[:18], raddr); err != nil {
+						return err
+					}
 				}
+
 				// 回复8
 				fmt.Println("回复8")
 				da[17] = 8
-				_, err = s.conn.WriteToUDP(da[:38], raddr)
-				if err != nil {
+				if err = mS(raddr); err != nil {
 					return err
 				}
 
 			} else { // 不区分
 				fmt.Println("不加区分，没有回复")
-				err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{6})
-				if err != nil {
+
+				if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{6}); err != nil {
 					return err
 				}
 			}
 
 		} else if step == 0xa || step == 0xb || step == 0xc { //a b c
 			fmt.Println("通知为abc")
-			err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{uint8(step)})
-			if err != nil {
+			if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{uint8(step)}); err != nil {
 				return err
 			}
 		}
@@ -286,14 +282,8 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 
 // DiscoverClient
 func (s *STUN) DiscoverClient() (int16, error) {
-
-	// 临时
-	if err = s.Init(true); err != nil {
-		return 0, err
-	}
-
 	// return code:
-	// -1 error
+	// other error
 	//  6 Full Cone or Restricted Cone
 	//  9 No NAT(Public IP)
 	//  a Full Cone
@@ -303,129 +293,126 @@ func (s *STUN) DiscoverClient() (int16, error) {
 	//  e Sever no response
 	//  f Exceptions
 
+	// 临时
+	if err = s.Init(true); err != nil {
+		return 0, err
+	}
+
 	var juuid []byte
 	juuid = append(juuid, 'J')
 	juuid = append(juuid, com.CreateUUID()...)
+	var da []byte = []byte(juuid)
+	da = append(da, 1)
+	var R = func(shouleCode ...uint8) error { //读取函数，收到对应的数据包返回nil
+		for { // 由于Sever对相同的包会回复多次，所以对读取到的不是期望的包应该丢弃
+			err = s.conn.SetReadDeadline(time.Now().Add(time.Second * 1))
+			if err != nil {
+				return err
+			}
+			_, err = s.conn.Read(da)
+			if err != nil {
+				return err
+			} else if bytes.Equal(juuid, da[:17]) {
+				var flag bool
+				for _, v := range shouleCode {
+					if v == da[17] {
+						flag = true
+					}
+				}
+				if flag {
+					return nil
+				}
+			}
+		}
+	}
 
 	fmt.Println("开始")
 	/*
 	* 操作
 	 */
 
-	// 发Juuid:1
-	da := []byte(juuid)
-	da = append(da, 1)
+	// 发1
 	_, err = s.conn.Write(da)
 	if err != nil {
 		return -1, err
 	}
 	fmt.Println("发送1")
-	a := time.Now().UnixNano()
-	// 收Juuid:2
-	err = s.conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-	if err != nil {
-		return -1, err
-	}
-	_, err = s.conn.Read(da)
-	b := time.Now().UnixNano()
-	fmt.Println("接收2等待", (b-a)/1e6)
+
+	// 收2
+	err = R(2)
 	if err != nil { //超时 服务器没有回复
 		return 0xe, errSever
-
-	} else if !bytes.Equal(da[:17], juuid) || da[17] != 2 { // 异常
-		fmt.Println("step", da[17])
-		return -1, errors.New("Exceptions: need Juuid2, instead " + string(da[:18]))
 	}
 	fmt.Println("收到2")
 
-	// 第二端口发Juuid:3
+	// 第二端口发3
 	da[17] = 3
 	_, err = s.conn2.Write(da[:18])
 	if err != nil {
 		return -1, err
 	}
-	a = time.Now().UnixNano()
-	// 收Juuid:9 或 Juuid:d 或 Juuid:5(收不到4) 或 Juuid:4(接下来应收到5)
-	err = s.conn.SetReadDeadline(time.Now().Add(time.Second))
-	if err != nil {
-		return -1, err
-	}
-	_, err = s.conn.Read(da)
-	b = time.Now().UnixNano()
-	fmt.Println("发送3后等待", (b-a)/1e6)
-	if err != nil {
-		return -1, err
-	}
 
-	fmt.Println("收到", string(da[17]))
-
-	if bytes.Equal(da[:17], juuid) && da[17] == 9 { //公网IP
+	// 收 9,d,4,5
+	err = R(9, 0xd, 4, 5)
+	if err != nil {
+		return 0, err
+	} else if da[17] == 9 { //公网IP
 		return 9, nil
 
-	} else if bytes.Equal(da[:17], juuid) && da[17] == 0xd { //对称NAT
+	} else if da[17] == 0xd { //对称NAT
 		return 0xd, nil
 
-	} else if bytes.Equal(da[:17], juuid) && da[17] == 5 { //收到5且收不到4 端口限制nat
-
-		// 收不到4
-		// 回复
-		da[17] = 0xc
-		_, _ = s.conn.Write(da[:18])
-		return 0xc, nil
-
-	} else if bytes.Equal(da[:17], juuid) && da[17] == 4 { //收到4
-		// 收 5
-		err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
-		if err != nil {
-			return -1, err
-		}
-		_, err = s.conn.Read(da)
-		if err != nil {
-			return 0xe, errSever
-		}
-		if bytes.Equal(da[:17], juuid) && da[17] == 5 { // 完全或IP限制锥形NAT
-			// 收 第二IP的包Juuid:7 或 Juuid:8 或 超时(没有区分)
-
-			err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
-			if err != nil {
-				return 0, err
-			}
-			_, err = s.conn.Read(da)
+	} else if da[17] == 4 || da[17] == 5 {
+		if da[17] == 5 {
+			err = R(4)
 			if err != nil {
 				if strings.Contains(err.Error(), "time") { //超时 不区分
-					return 6, nil
+					fmt.Println("超时，收不到4，端口限制锥形")
+
+					da[17] = 0xc
+					s.conn.Write(da[:18])
+					return 0xc, nil
 				}
 				return 0, err
+			}
+		}
+		// 至此，起码4已经收到；为完全锥形或IP限制锥形，接下来可能有进一步判断
 
-			} else if bytes.Equal(da[:17], juuid) && da[17] == 8 { // 收到8，
+		// 收 第二IP的包Juuid:7 或 Juuid:8 或 超时(没有区分)
+		err = R(7, 8)
+		if err != nil {
+			if strings.Contains(err.Error(), "time") { //超时 不区分
+				fmt.Println("超时，不区分完全锥形和IP限制锥形")
+				return 6, nil
+			}
+			return 0, err
 
-				// 收7(由于UDP不保证数据包到达顺序)
-				err = s.conn.SetReadDeadline(time.Now().Add(time.Millisecond * 500))
+		} else if da[17] == 8 || da[17] == 7 {
+			if da[17] == 8 { //收到8，尝试接收7
+
+				err = R(7)
 				if err != nil {
+					if strings.Contains(err.Error(), "time") { //超时
+						fmt.Println("超时，收不到7，IP限制锥形")
+
+						da[17] = 0xb
+						s.conn.Write(da[:38])
+						return 0xb, nil
+					}
 					return 0, err
 				}
-				_, err = s.conn.Read(da)
-				if err == nil && da[17] == 7 {
-					da[17] = 0xa
-					s.conn.Write(da[:38])
-					return 0xa, nil //完全限制锥形
-				}
-
-				// 回复
-				da[17] = 0xb
-				s.conn.Write(da[:38])
-				return 0xb, nil // IP限制锥形
-
-			} else if bytes.Equal(da[:17], juuid) && da[17] == 7 { //收到7
-				// 不用再接收8，已经收到7，确定为完全锥形
-				da[17] = 0xa
-				s.conn.Write(da[:38])
-				return 0xa, nil //完全锥形
 			}
-		} else { // 收到4却收不到5 异常
-			return 0xf, nil
+
+			// 至此，已经接收到7 完全锥形NAT
+			da[17] = 0xa
+			s.conn.Write(da[:38])
+
+			return 0xa, nil
 		}
 	}
+
+	fmt.Println(da[17])
+
 	return 0xf, nil
 }
 

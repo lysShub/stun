@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/lysShub/stun"
+	"github.com/lysShub/stun/internal/com"
 )
 
 func main() {
@@ -19,4 +21,24 @@ func main() {
 
 	// fmt.Println(s.DiscoverClient())
 
+}
+
+func A() {
+	laddr, err := net.ResolveUDPAddr("udp", ":19986")
+	com.Errorlog(err)
+	laddr2, err := net.ResolveUDPAddr("udp", ":19987")
+	com.Errorlog(err)
+
+	raddr, err := net.ResolveUDPAddr("udp", "114.116.254.26:19986")
+	com.Errorlog(err)
+
+	conn1, err := net.DialUDP("udp", laddr, raddr)
+	com.Errorlog(err)
+	_, err = conn1.Write([]byte("我是你爸爸"))
+	com.Errorlog(err)
+
+	conn2, err := net.DialUDP("udp", laddr2, raddr)
+	com.Errorlog(err)
+	_, err = conn2.Write([]byte("我是你爸爸"))
+	com.Errorlog(err)
 }
