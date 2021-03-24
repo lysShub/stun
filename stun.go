@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lysShub/kvdb"
@@ -147,15 +148,21 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	var step uint16 = 0
 	var juuid []byte = nil
 
-	fmt.Println("收到数据", raddr.IP)
+	/*
+
+
+
+	 */
+
 	if len(da) != 18 {
-		fmt.Println("接收到长度不为18,为", len(da))
+		fmt.Println("接收到长度不为18，为", len(da))
 		return nil
 	}
 	step = uint16(da[17])
 	juuid = da[:17]
 
 	if step == 1 { //1 开始
+		fmt.Println("收到1")
 		var D map[string][]byte = make(map[string][]byte)
 		D["step"] = []byte{1}
 		D["rIP"] = []byte(raddr.IP.String())
@@ -172,7 +179,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("回复了2")
+		fmt.Println("回复了2", raddr)
 
 	} else {
 		rPort := s.db.ReadTableValue(s.dbDiscover, string(juuid), "rPort")
@@ -187,26 +194,33 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 		}
 
 		if step == 3 { //3
+			fmt.Println("收到3")
 			raddr1, err := net.ResolveUDPAddr("udp", string(rIP)+":"+string(rPort))
 			if err != nil {
 				return err
 			}
 
-			if strconv.Itoa(raddr.Port) == string(rPort) { //两次请求端口不同，需进一步判断 回复4和5
+			if strconv.Itoa(raddr.Port) != string(rPort) { //两次请求端口不同，需进一步判断 回复4和5
+				fmt.Println("两次请求端口不同，需进一步判断 回复4和5")
 				da[17] = 4 //4
+				fmt.Println("第二端口回复4")
+
 				_, err = s.conn2.WriteToUDP(da[:18], raddr1)
 				if err != nil {
 					return err
 				}
 
 				time.Sleep(time.Millisecond * 300)
+				fmt.Println("延时后回复5")
 				da[17] = 5 //5
 				_, err = s.conn.WriteToUDP(da[:18], raddr1)
 				if err != nil {
 					return err
 				}
 			} else {
+				fmt.Println("两次请求端口相同，公网IP或对称NAT")
 				if raddr.Port == int(s.Port) && string(rPort) == strconv.Itoa(int(s.SecondPort)) { // 两次端口与预定义端口相对，公网IP 9
+					fmt.Println("两次端口与预定义端口相同,公网IP，回复9")
 					err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{9})
 					if err != nil {
 						return err
@@ -218,6 +232,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 					}
 
 				} else { // 对称NAT d
+					fmt.Println("对称NAT,回复d")
 					err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{0xd})
 					if err != nil {
 						return err
@@ -231,15 +246,18 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 			}
 
 		} else if step == 6 {
-
+			fmt.Println("收到6")
 			if s.secondIPConn != nil { //回复 7 8
+				fmt.Println("需要区分IP和端口")
 				// 回复 7(确保有效)
+				fmt.Println("第二IP回复7")
 				da[17] = 7
 				_, err = s.secondIPConn.WriteToUDP(da[:18], raddr)
 				if err != nil {
 					return err
 				}
 				// 回复8
+				fmt.Println("回复8")
 				da[17] = 8
 				_, err = s.conn.WriteToUDP(da[:38], raddr)
 				if err != nil {
@@ -247,6 +265,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 				}
 
 			} else { // 不区分
+				fmt.Println("不加区分，没有回复")
 				err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{6})
 				if err != nil {
 					return err
@@ -254,7 +273,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 			}
 
 		} else if step == 0xa || step == 0xb || step == 0xc { //a b c
-
+			fmt.Println("通知为abc")
 			err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{uint8(step)})
 			if err != nil {
 				return err
@@ -329,7 +348,6 @@ func (s *STUN) DiscoverClient() (int16, error) {
 	_, err = s.conn.Read(da)
 	b = time.Now().UnixNano()
 	fmt.Println("发送3后等待", (b-a)/1e6)
-
 	if err != nil {
 		return -1, err
 	}
@@ -347,7 +365,7 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		// 收不到4
 		// 回复
 		da[17] = 0xc
-		_, _ = s.conn.Write(da[:38])
+		_, _ = s.conn.Write(da[:18])
 		return 0xc, nil
 
 	} else if bytes.Equal(da[:17], juuid) && da[17] == 4 { //收到4
@@ -497,27 +515,101 @@ func (s *STUN) throughClient(tuuid []byte) error {
 	// lport := int(b[23])<<8 + int(b[24])
 	rip := net.ParseIP(string(b[24:29]))
 	rport := int(b[29])<<8 + int(b[30])
+	fmt.Println("对方IP", rip.String(), rport)
 
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
 	if err != nil {
 		return err
 	}
-	var conns [5]*net.UDPConn
+	var conns []*net.UDPConn
 	for i := 0; i < 5; i++ {
 		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport))
 		if err != nil {
 			return err
 		}
 		conn, err := net.DialUDP("udp", laddr, raddr)
+		defer conn.Close()
 		if err != nil {
-			return err
+			if i == 0 {
+				return err
+			}
+			i--
+			continue
 		}
-		conns[i] = conn
+		conns = append(conns, conn)
 	}
 
 	// 繁杂操作
+	// 收
+	var ch chan int = make(chan int, 1)
+	var da []byte = make([]byte, 64)
+	var flag bool = false
+	go func() {
+		var wg sync.WaitGroup
+		wg.Add(1)
+		for i, v := range conns {
+			index := i
+			conn := v
+			go func() {
+				for !flag {
+					conn.Read(da)
+					if bytes.Equal(da[:17], tuuid) && da[17] == 3 {
+						wg.Done()
+						ch <- index
+					}
+				}
+			}()
+		}
+		wg.Wait() // 阻塞
+	}()
+	// 发
+	_, err = conns[0].Write(append(tuuid, 3))
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for !flag {
+			for _, v := range conns {
+				v.Write(append(tuuid, 3))
+			}
+			time.Sleep(time.Millisecond * 200)
+		}
+	}()
+
+	var wh int
+	select { //阻塞 5s
+	case wh = <-ch:
+	case <-time.After(time.Second * 5):
+		return errors.New("超时无法完成穿隧")
+	}
+
+	// 成功一半
+	for i, v := range conns {
+		if i != wh {
+			v.Close()
+		}
+	}
+	conns[wh].Write(append(tuuid, 3))
+	conns[wh].Write(append(tuuid, 4))
+	for i := 0; i < 20; i++ {
+		conns[wh].SetReadDeadline(time.Now().Add(time.Millisecond * 100))
+		_, err = conns[wh].Read(da)
+		if err != nil {
+			if i >= 15 {
+				break //返回
+			} else {
+				i--
+			}
+		} else if bytes.Equal(da[:17], tuuid) && da[17] == 4 {
+			conns[wh].Write(append(tuuid, 4))
+		}
+	}
+
+	//
 
 	return nil
+
 }
 
 /* other function */
@@ -525,7 +617,7 @@ func (s *STUN) throughClient(tuuid []byte) error {
 func visibleSlice(b []byte) string {
 	var r string
 	for _, v := range b {
-		r = r + strconv.Itoa(v) + ""
+		r = r + strconv.Itoa(int(v)) + ""
 	}
 	return r
 }
