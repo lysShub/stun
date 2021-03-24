@@ -14,8 +14,9 @@ func main() {
 	s.SecondPort = 19987
 
 	fmt.Println("开始")
-	// fmt.Println(s.Sever())
-	fmt.Println(s.Init(true))
-	fmt.Println(s.DiscoverClient())
+
+	fmt.Println(s.Sever())
+
+	// fmt.Println(s.DiscoverClient())
 
 }

@@ -287,6 +287,11 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 // DiscoverClient
 func (s *STUN) DiscoverClient() (int16, error) {
 
+	// 临时
+	if err = s.Init(true); err != nil {
+		return 0, err
+	}
+
 	// return code:
 	// -1 error
 	//  6 Full Cone or Restricted Cone
