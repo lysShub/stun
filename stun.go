@@ -142,7 +142,7 @@ func (s *STUN) Sever() error {
 	}
 }
 
-// DiscoverSever
+// DiscoverSever NAT type discover
 func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	var t int = 4
 	var step uint16 = 0
@@ -157,15 +157,12 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	}
 
 	if len(da) != 18 {
-		fmt.Println("接收到长度不为18，为", len(da))
 		return nil
 	}
 	step = uint16(da[17])
 	juuid = da[:17]
 
-	if step == 1 { //1 开始
-
-		fmt.Println("收到1")
+	if step == 1 {
 		var D map[string][]byte = make(map[string][]byte)
 		D["step"] = []byte{1}
 		D["rIP"] = []byte(raddr.IP.String())
@@ -174,26 +171,20 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 			return err
 		}
 
-		// 回复
-		da[17] = 2 //2
+		da[17] = 2
 		if err = mS(raddr); err != nil {
 			return err
 		}
-		fmt.Println("回复了2", raddr)
-
 	} else {
 
 		if rPort = s.db.ReadTableValue(s.dbDiscover, string(juuid), "rPort"); rPort == nil {
-			fmt.Println("无法获取到数据库记录")
 			return nil
 		}
 		if rIP = s.db.ReadTableValue(s.dbDiscover, string(juuid), "rIP"); rIP == nil {
-			fmt.Println("无法获取到数据库记录")
 			return nil
 		}
 
 		if step == 3 { //3
-			fmt.Println("收到3")
 
 			var raddr1 *net.UDPAddr
 			if raddr1, err = net.ResolveUDPAddr("udp", string(rIP)+":"+string(rPort)); err != nil {
@@ -201,25 +192,20 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 			}
 
 			if strconv.Itoa(raddr.Port) == string(rPort) { //两次请求端口相同，需进一步判断 回复4和5
-				fmt.Println("两次请求端口相同，需进一步判断 回复4和5")
-				fmt.Println("第二端口回复4")
 
 				da[17] = 4 //4
 				if err = mS(raddr1); err != nil {
 					return err
 				}
 
-				fmt.Println("回复5")
 				da[17] = 5 //5
 				if err = mS(raddr1); err != nil {
 					return err
 				}
 
 			} else {
-				fmt.Println("两次请求端口不同，公网IP或对称NAT")
 				if raddr.Port == int(s.Port) && string(rPort) == strconv.Itoa(int(s.SecondPort)) { // 两次端口与预定义端口相对，公网IP 9
 
-					fmt.Println("两次端口与预定义端口相同,公网IP，回复9")
 					if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{9}); err != nil {
 						return err
 					}
@@ -228,8 +214,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 						return err
 					}
 
-				} else { // 对称NAT d
-					fmt.Println("对称NAT,回复d")
+				} else {
 					if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{0xd}); err != nil {
 						return err
 					}
@@ -241,49 +226,38 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 			}
 
 		} else if step == 6 {
-			fmt.Println("收到6")
 
-			if s.secondIPConn != nil { //回复 7 8
-				fmt.Println("需要区分IP和端口")
-				// 回复 7(确保有效)
-				fmt.Println("第二IP回复7")
+			if s.secondIPConn != nil {
 				da[17] = 7
 				for i := 0; i < t; i++ {
 					if _, err = s.secondIPConn.WriteToUDP(da[:18], raddr); err != nil {
 						return err
 					}
 				}
-
-				// 回复8
-				fmt.Println("回复8")
 				da[17] = 8
 				if err = mS(raddr); err != nil {
 					return err
 				}
 
-			} else { // 不区分
-				fmt.Println("不加区分，没有回复")
-
+			} else { // 不区分，没有回复
 				if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{6}); err != nil {
 					return err
 				}
 			}
 
 		} else if step == 0xa || step == 0xb || step == 0xc { //a b c
-			fmt.Println("通知为abc")
 			if err = s.db.SetTableValue(s.dbDiscover, string(juuid), "type", []byte{uint8(step)}); err != nil {
 				return err
 			}
 		}
 	}
-
 	return nil
 }
 
-// DiscoverClient
+// DiscoverClient NAT type discover
 func (s *STUN) DiscoverClient() (int16, error) {
-	// return code:
-	// other error
+	// 返回代码:
+	//  0 error
 	//  6 Full Cone or Restricted Cone
 	//  9 No NAT(Public IP)
 	//  a Full Cone
@@ -325,34 +299,28 @@ func (s *STUN) DiscoverClient() (int16, error) {
 			}
 		}
 	}
+	/* start */
 
-	fmt.Println("开始")
-	/*
-	* 操作
-	 */
-
-	// 发1
+	// 发 1
 	_, err = s.conn.Write(da)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
-	fmt.Println("发送1")
 
-	// 收2
+	// 收 2
 	err = R(2)
-	if err != nil { //超时 服务器没有回复
+	if err != nil { //timeout sever offline
 		return 0xe, errSever
 	}
-	fmt.Println("收到2")
 
-	// 第二端口发3
+	// 第二端口发 3
 	da[17] = 3
 	_, err = s.conn2.Write(da[:18])
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
-	// 收 9,d,4,5
+	// 收  9,d,4,5
 	err = R(9, 0xd, 4, 5)
 	if err != nil {
 		return 0, err
@@ -366,8 +334,7 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		if da[17] == 5 {
 			err = R(4)
 			if err != nil {
-				if strings.Contains(err.Error(), "time") { //超时 不区分
-					fmt.Println("超时，收不到4，端口限制锥形")
+				if strings.Contains(err.Error(), "time") { //timeout 不区分
 
 					da[17] = 0xc
 					s.conn.Write(da[:18])
@@ -382,7 +349,6 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		err = R(7, 8)
 		if err != nil {
 			if strings.Contains(err.Error(), "time") { //超时 不区分
-				fmt.Println("超时，不区分完全锥形和IP限制锥形")
 				return 6, nil
 			}
 			return 0, err
@@ -393,8 +359,6 @@ func (s *STUN) DiscoverClient() (int16, error) {
 				err = R(7)
 				if err != nil {
 					if strings.Contains(err.Error(), "time") { //超时
-						fmt.Println("超时，收不到7，IP限制锥形")
-
 						da[17] = 0xb
 						s.conn.Write(da[:38])
 						return 0xb, nil
@@ -411,9 +375,7 @@ func (s *STUN) DiscoverClient() (int16, error) {
 		}
 	}
 
-	fmt.Println(da[17])
-
-	return 0xf, nil
+	return 0xf, nil // 异常
 }
 
 // throughSever
@@ -601,7 +563,6 @@ func (s *STUN) throughClient(tuuid []byte) error {
 	//
 
 	return nil
-
 }
 
 /* other function */
