@@ -146,7 +146,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	step = uint16(da[17])
 	juuid = da[:17]
 
-	if s.dbd.R(string(juuid), strconv.Itoa(int(step))) == "" { // 记录已经存在
+	if s.dbd.R(string(juuid), strconv.Itoa(int(step))) != "" { // 记录已经存在
 		return nil
 	}
 
