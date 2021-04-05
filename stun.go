@@ -18,20 +18,19 @@ type STUN struct {
 	Port uint16
 	// 客户端或服务器第二端口(仅在NAT发现中被使用)
 	SecondPort uint16
-	// 服务器地址，IP或域名
+	// 服务器地址，IP或域名(客户端中必须设置)
 	SeverAddr string
 	conn      *net.UDPConn // 客户端与服务器的主端口的‘链接’
 
 	/* NAT类型发现 */
-
-	// 第二网卡的局域网IP，可选。如果不设置则不会区分IP与端口限制形NAT
+	// 第二网卡的内网IP，可选。如果不设置则不会区分IP与端口限制形NAT
 	SecondNetCardIP net.IP
-	conn2           *net.UDPConn // 第二端口
-	secondIPConn    *net.UDPConn // 第二IP的第一端口的conn
+	conn2           *net.UDPConn
+	secondIPConn    *net.UDPConn // 第二IP的conn
 	dbd             *mapdb.Db    // NAT类型判断的数据库
 
 	/* NAT穿隧 */
-	dbt *mapdb.Db
+	dbt *mapdb.Db // NAT穿隧数据库
 }
 
 func (s *STUN) Init(isClient bool) error {
