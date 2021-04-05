@@ -169,6 +169,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 		s.dbd.Ct(string(juuid), D)
 
 		da[17] = 2
+		fmt.Println("回复了2")
 		if err = mS(raddr, da); err != nil {
 			return err
 		}
