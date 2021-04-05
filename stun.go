@@ -149,6 +149,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	if s.dbd.R(string(juuid), strconv.Itoa(int(step))) != "" { // 记录已经存在
 		return nil
 	}
+	fmt.Println("放行", juuid, step)
 
 	// 回复函数
 	var mS = func(raddr *net.UDPAddr, da []byte) error {
@@ -169,7 +170,6 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 		s.dbd.Ct(string(juuid), D)
 
 		da[17] = 2
-		fmt.Println("回复了2")
 		if err = mS(raddr, da); err != nil {
 			return err
 		}
