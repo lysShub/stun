@@ -148,13 +148,15 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
-		var s int
-		if s, err = strconv.Atoi(v); err != nil {
+		var st int
+		if st, err = strconv.Atoi(v); err != nil {
 			return nil
 		}
-		if s >= int(step) { // 记录已经存在
+		if st >= int(step) { // 记录已经存在
 			fmt.Println("拦截", juuid, step)
 			return nil
+		} else { // 更新step
+			s.dbd.U(string(juuid), "step", strconv.Itoa(int(step)))
 		}
 	}
 
