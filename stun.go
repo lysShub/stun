@@ -176,9 +176,11 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	} else {
 
 		if rPort = s.dbd.R(string(juuid), "rPort"); rPort == "" {
+			fmt.Println("没有获取到数据")
 			return nil
 		}
 		if rIP = s.dbd.R(string(juuid), "rIP"); rIP == "" {
+			fmt.Println("没有获取到数据")
 			return nil
 		}
 
