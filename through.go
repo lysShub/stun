@@ -12,18 +12,18 @@ import (
 	"github.com/lysShub/stun/internal/com"
 )
 
-// throughSever
+// ThroughSever
 func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
-	if len(da) != 18 {
-		fmt.Println("长度不为18")
+	if len(da) != 17 {
+		fmt.Println("长度不为17")
 		return nil
 	}
 	if da[17] == 1 { // 首次请求
 
 		tuuid := da[:17]
 		if s.dbt.Et(string(tuuid)) { //双方中第二个请求
-
+			fmt.Println("双方中第二个请求")
 			// 记录
 			s.dbt.U(string(tuuid), "ip2", raddr.IP.String())
 			s.dbt.U(string(tuuid), "port2", strconv.Itoa(raddr.Port))
@@ -34,20 +34,24 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 				com.Errorlog(errors.New("can't read ip1, tuuid is:" + visibleSlice(tuuid)))
 				return nil
 			}
-			var port1 = s.dbt.R(string(tuuid), "port1")
-
+			var sbp = s.dbt.R(string(tuuid), "port1")
+			var portb int
+			if portb, err = strconv.Atoi(sbp); err != nil {
+				com.Errorlog(errors.New("invalid port: " + err.Error()))
+				return nil
+			}
 			// 回复当前
-			bn := append(tuuid, 2, raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port), ip1[0], ip1[2], ip1[3], ip1[4], port1[0], port1[1])
-			s.conn.WriteToUDP(bn, raddr)
+			bn := append(tuuid, 2, raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port), ip1[12], ip1[13], ip1[14], ip1[15], uint8(portb>>8), uint8(portb))
+			for i := 0; i < 5; i++ {
+				if _, err = s.conn.WriteToUDP(bn, raddr); com.Errorlog(err) {
+					return nil
+				}
+			}
 
 			// 回复之前
-			var portb int
-			if portb, err = strconv.Atoi(port1); err != nil {
-				com.Errorlog(errors.New("invalid port: " + err.Error()))
-			}
-			bb := append(tuuid, 2, ip1[0], ip1[2], ip1[3], ip1[4], uint8(portb>>8), uint8(portb), raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port))
+			bb := append(tuuid, 2, ip1[12], ip1[13], ip1[14], ip1[15], uint8(portb>>8), uint8(portb), raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port))
 			var raddr2, laddr *net.UDPAddr
-			if raddr2, err = net.ResolveUDPAddr("udp", ip1.String()+":"+port1); com.Errorlog(err) {
+			if raddr2, err = net.ResolveUDPAddr("udp", ip1.String()+":"+sbp); com.Errorlog(err) {
 				return nil
 			}
 			if laddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port))); com.Errorlog(err) {
@@ -59,68 +63,74 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 			}
 			defer conn.Close()
 
-			if _, err = conn.Write(bb); com.Errorlog(err) {
-				return nil
+			for i := 0; i < 5; i++ {
+				if _, err = conn.Write(bb); com.Errorlog(err) {
+					return nil
+				}
 			}
 
 		} else { // 双方中第一个请求
+			fmt.Println("双方中第一个请求")
 			s.dbt.U(string(tuuid), "ip1", raddr.IP.String())
 			s.dbt.U(string(tuuid), "port1", strconv.Itoa(raddr.Port))
-
 		}
-	} else {
-		// 不可能
-
 	}
 
 	return nil
 }
 
-func (s *STUN) throughClient(tuuid []byte) error {
+// ThroughClient
+func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 
 	_, err = s.conn.Write(tuuid)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	// 等待回复
 	var b []byte = make([]byte, 512)
-	for i := 0; i <= 6; i++ { // 等待5s
-		err = s.conn.SetReadDeadline(time.Now().Add(time.Second * 1))
-		if err != nil {
-			return err
+	var wg chan int = make(chan int)
+	go func() {
+		for {
+			_, err = s.conn.Read(b)
+			if err != nil {
+				return
+			}
+			if bytes.Equal(b[:17], tuuid) {
+				fmt.Println("映射建立，成功一半")
+				wg <- 0
+				break
+			}
 		}
-		_, err = s.conn.Read(b)
-		if err != nil {
-			return err
-		}
-		if bytes.Equal(b[:17], tuuid) {
-			break
-		} else if i == 6 {
-			return errors.New("sever no reply")
-		}
+	}()
+	select {
+	case <-wg: // 无需操作
+	case <-time.After(time.Second * 3):
+		return nil, errors.New("sever no reply")
 	}
 
-	// lip := net.ParseIP(string(b[18:23]))
-	// lport := int(b[23])<<8 + int(b[24])
-	rip := net.ParseIP(string(b[24:29]))
+	/*  开始穿隧  */
+	rip := parseIP(b[24:29])
 	rport := int(b[29])<<8 + int(b[30])
-	fmt.Println("对方IP", rip.String(), rport)
+	fmt.Println("对方IP", rip.String(), rport) //己方IP没有用
 
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var conns []*net.UDPConn
-	for i := 0; i < 5; i++ {
-		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport))
+	var raddrs []*net.UDPAddr
+	for i := 0; i < 5; i++ { // 探测与相连的5个端口
+		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport+i))
 		if err != nil {
-			return err
+			return nil, err
 		}
+		raddrs = append(raddrs, raddr)
 		conn, err := net.DialUDP("udp", laddr, raddr)
 		defer conn.Close()
 		if err != nil {
 			if i == 0 {
-				return err
+				return nil, err
 			}
 			i--
 			continue
@@ -128,11 +138,9 @@ func (s *STUN) throughClient(tuuid []byte) error {
 		conns = append(conns, conn)
 	}
 
-	// 繁杂操作
 	// 收
 	var ch chan int = make(chan int, 1)
 	var da []byte = make([]byte, 64)
-	var flag bool = false
 	go func() {
 		var wg sync.WaitGroup
 		wg.Add(1)
@@ -140,7 +148,7 @@ func (s *STUN) throughClient(tuuid []byte) error {
 			index := i
 			conn := v
 			go func() {
-				for !flag {
+				for {
 					conn.Read(da)
 					if bytes.Equal(da[:17], tuuid) && da[17] == 3 {
 						wg.Done()
@@ -151,18 +159,19 @@ func (s *STUN) throughClient(tuuid []byte) error {
 		}
 		wg.Wait() // 阻塞
 	}()
-	// 发
-	_, err = conns[0].Write(append(tuuid, 3))
-	if err != nil {
-		return err
-	}
 
+	// 发
 	go func() {
-		for !flag {
-			for _, v := range conns {
-				v.Write(append(tuuid, 3))
+		for {
+			for i, v := range conns {
+				for j := 0; j < 5; j++ {
+					v.Write(append(tuuid, 3))
+				}
+				if i == 0 {
+					time.Sleep(time.Millisecond * 100)
+				}
 			}
-			time.Sleep(time.Millisecond * 200)
+			time.Sleep(time.Millisecond * 50)
 		}
 	}()
 
@@ -170,34 +179,14 @@ func (s *STUN) throughClient(tuuid []byte) error {
 	select { //阻塞 5s
 	case wh = <-ch:
 	case <-time.After(time.Second * 5):
-		return errors.New("超时无法完成穿隧")
+		return nil, errors.New("超时无法完成穿隧")
 	}
 
-	// 成功一半
-	for i, v := range conns {
-		if i != wh {
-			v.Close()
-		}
-	}
-	conns[wh].Write(append(tuuid, 3))
-	conns[wh].Write(append(tuuid, 4))
 	for i := 0; i < 20; i++ {
-		conns[wh].SetReadDeadline(time.Now().Add(time.Millisecond * 100))
-		_, err = conns[wh].Read(da)
-		if err != nil {
-			if i >= 15 {
-				break //返回
-			} else {
-				i--
-			}
-		} else if bytes.Equal(da[:17], tuuid) && da[17] == 4 {
-			conns[wh].Write(append(tuuid, 4))
-		}
+		conns[wh].Write(append(tuuid, 3))
 	}
 
-	//
-
-	return nil
+	return raddrs[wh], nil
 }
 
 func visibleSlice(b []byte) string {
@@ -206,4 +195,16 @@ func visibleSlice(b []byte) string {
 		r = r + strconv.Itoa(int(v)) + ""
 	}
 	return r
+}
+
+func parseIP(b []byte) net.IP {
+	var s string
+	for i := 0; i < 4; i++ {
+		if i == 3 {
+			s += strconv.Itoa(int(b[i]))
+		} else {
+			s += strconv.Itoa(int(b[i])) + `.`
+		}
+	}
+	return net.ParseIP(s)
 }

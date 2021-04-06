@@ -124,13 +124,16 @@ func (s *STUN) Sever() error {
 			continue
 		}
 		if da[0] == 'J' { //NAT判断
-			fmt.Println("接收到数据")
+			fmt.Println("接收到数据J")
 			if err = s.discoverSever(da[:n], raddr); com.Errorlog(err) {
 				continue
 			}
 
-		} else if da[0] == '?' {
-
+		} else if da[0] == 'T' {
+			fmt.Println("接收到数据T")
+			if err = s.throughSever(da[:n], raddr); com.Errorlog(err) {
+				continue
+			}
 		}
 	}
 }
