@@ -19,6 +19,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 	var rIP, rPort string
 
 	if len(da) != 18 {
+		fmt.Println("长度不为18")
 		return nil
 	}
 	step = uint16(da[17])

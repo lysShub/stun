@@ -81,8 +81,12 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
 // ThroughClient
 func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
+	// 临时
+	if err = s.Init(true); err != nil {
+		return nil, err
+	}
 
-	_, err = s.conn.Write(tuuid)
+	_, err = s.conn.Write(append(tuuid, 1))
 	if err != nil {
 		return nil, err
 	}
