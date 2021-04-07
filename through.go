@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,10 +81,12 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
 // ThroughClient
 func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
-	// 临时
-	if err = s.Init(true); err != nil {
+
+	if err = s.Init(true); err != nil { // 必须，s.conn会被重置
 		return nil, err
 	}
+
+	var portRange int = 5 // 端口猜测范围
 
 	_, err = s.conn.Write(append(tuuid, 1))
 	if err != nil {
@@ -117,27 +120,32 @@ func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 	rport := int(b[29])<<8 + int(b[30])
 	fmt.Println("对方IP", rip.String(), rport) //
 
-	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
-	if err != nil {
+	s.conn.Close() // 关闭稍后重置
+	var laddr *net.UDPAddr
+	if laddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port))); err != nil {
 		return nil, err
 	}
 	var conns []*net.UDPConn
 	var raddrs []*net.UDPAddr
-	for i := 0; i < 5; i++ { // 探测与相连的5个端口
+	for i := 0; i < portRange; i++ { // 探测与相连的5个端口
 		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport+i))
 		if err != nil {
 			return nil, err
 		}
 		raddrs = append(raddrs, raddr)
 		conn, err := net.DialUDP("udp", laddr, raddr)
-		defer conn.Close()
 		if err != nil {
-			if i == 0 {
+			if strings.Contains(err.Error(), "one") { // 端口被占用
+				//  dial udp :4433->103.1.1.3:19986: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+				portRange++
+				continue
+			} else {
+				fmt.Println("错误序号", i)
 				return nil, err
 			}
-			i--
-			continue
 		}
+		defer conn.Close()
+
 		conns = append(conns, conn)
 	}
 
