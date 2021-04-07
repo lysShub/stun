@@ -15,8 +15,8 @@ import (
 // ThroughSever
 func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
-	if len(da) != 17 {
-		fmt.Println("长度不为17")
+	if len(da) != 18 {
+		fmt.Println("长度不为18")
 		return nil
 	}
 	if da[17] == 1 { // 首次请求
