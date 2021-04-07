@@ -23,6 +23,10 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
 		tuuid := da[:17]
 		if s.dbt.Et(string(tuuid)) { //双方中第二个请求
+			if s.dbt.R(string(tuuid), "ip2") == "" {
+
+			}
+
 			fmt.Println("双方中第二个请求")
 			// 记录
 			s.dbt.U(string(tuuid), "ip2", raddr.IP.String())
@@ -70,9 +74,13 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 			}
 
 		} else { // 双方中第一个请求
-			fmt.Println("双方中第一个请求")
-			s.dbt.U(string(tuuid), "ip1", raddr.IP.String())
-			s.dbt.U(string(tuuid), "port1", strconv.Itoa(raddr.Port))
+			if s.dbt.R(string(tuuid), "ip1") == "" {
+				fmt.Println("双方中第一个请求")
+				s.dbt.Ct(string(tuuid), map[string]string{
+					"ip1":   raddr.IP.String(),
+					"port1": strconv.Itoa(raddr.Port),
+				})
+			}
 		}
 	}
 
