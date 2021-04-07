@@ -17,7 +17,7 @@ GO111MODULE=on
 
 
 ```cmd
-# Comprehensive 综合读写查，11次操作
+# Comprehensive 综合改写查，有11次操作
 goos: windows
 goarch: amd64
 pkg: github.com/lysShub/mapdb/test/test_prop

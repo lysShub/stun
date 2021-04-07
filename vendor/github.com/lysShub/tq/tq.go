@@ -2,20 +2,15 @@ package tq
 
 import (
 	"crypto/rand"
+	"errors"
 	"math/big"
+	"strconv"
 	"sync"
 	"time"
 )
 
-// 确保初始化完成
-var InitEnd sync.WaitGroup
-
-func init() {
-	InitEnd.Add(1)
-}
-
 type TQ struct {
-	// 使用UTC时间，及不要有time.Now().Local()的写法；除非你知道将发生什么
+	// 使用UTC时间；及不要有time.Now().Local()的写法，除非你知道将发生什么
 
 	// 将按照预定时间返回消息；请及时读取，否则会阻塞以致影响后续任务
 	MQ chan interface{}
@@ -31,11 +26,11 @@ type TQ struct {
 
 // Ts 表示一个任务
 type Ts struct {
-	T time.Time
-	P interface{}
+	T time.Time   // 预定执行UTC时间
+	P interface{} // 执行时MQ返回的数据
 }
 
-// Run 运行任务，阻塞函数，请使用协程运行。
+// Run 启动
 func (t *TQ) Run() {
 
 	t.imr = make(chan Ts, 64)
@@ -48,71 +43,72 @@ func (t *TQ) Run() {
 	// 执行任务
 	go func() {
 		for { // 新建了管道
-
 			select {
 			case i := <-t.cid:
 				go t.exec(i)
 			case <-time.After(time.Minute):
 				// nothing
 			}
-			i := <-t.cid
-			go t.exec(i)
 		}
 	}()
 
-	InitEnd.Done() // 初始化完成
-
 	// 分发任务
-	for {
+	go func() {
 		var r Ts
+		for {
+			select {
+			case r = <-t.imr:
 
-		select {
-		case r = <-t.imr:
+				if len(t.ends) == 0 { // 第一次
 
-			if len(t.ends) == 0 { // 第一次
-
-				var sc chan Ts = make(chan Ts, t.dcl)
-				var id = t.randId()
-
-				t.chans[id] = sc
-				t.ends[id] = r.T
-				t.chans[id] <- r
-				t.cid <- id
-			} else {
-
-				var flag bool = false
-				for id, v := range t.ends {
-
-					if r.T.After(v) && len(t.chans[id]) < t.dcl { //不需要新建管道
-
-						t.chans[id] <- r
-						t.ends[id] = r.T
-						flag = true
-						break
-					}
-				}
-				// 需要新建管道
-				if !flag {
-					var sc chan Ts = make(chan Ts, t.dcl)
+					var sc chan Ts = make(chan Ts, t.dcl*2)
 					var id = t.randId()
 
 					t.chans[id] = sc
 					t.ends[id] = r.T
 					t.chans[id] <- r
 					t.cid <- id
+				} else {
+					var flag bool = false
+					for id, v := range t.ends {
+
+						if r.T.After(v) && len(t.chans[id]) < t.dcl { //追加
+
+							t.chans[id] <- r
+							t.ends[id] = r.T
+							flag = true
+							break
+						}
+					}
+					// 需要新建管道
+					if !flag {
+						var sc chan Ts = make(chan Ts, t.dcl)
+						var id = t.randId()
+
+						t.chans[id] = sc
+						t.ends[id] = r.T
+						t.chans[id] <- r
+						t.cid <- id
+					}
 				}
+
+			case <-time.After(time.Minute):
+				// nothing
 			}
 
-		case <-time.After(time.Minute):
-			// nothing
 		}
+	}()
 
-	}
+	time.Sleep(time.Millisecond * 20)
 }
 
 // Add 增加任务
-func (t *TQ) Add(r Ts) {
+func (t *TQ) Add(r Ts) error {
+	if cap(t.imr)-len(t.imr) < 1 {
+		return errors.New("channel block! len:" + strconv.Itoa(len(t.imr)) + " ,cap:" + strconv.Itoa(cap(t.imr)))
+	}
 	t.imr <- r
+	return nil
 }
 
 // exec 执行任务
@@ -135,7 +131,7 @@ func (t *TQ) exec(id int64) {
 		t.wc.Unlock()
 
 		ts = <-t.chans[id]
-		time.Sleep(ts.T.Sub(time.Now())) //延时等待
+		time.Sleep(ts.T.Sub(time.Now())) //延时
 
 		t.MQ <- ts.P
 	}

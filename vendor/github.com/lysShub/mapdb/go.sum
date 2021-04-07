@@ -4,3 +4,7 @@ github.com/lysShub/tq v0.1.0 h1:Dyoi/XLVvnm4tDgRmnRt2spSw8XirrGU45dEZtfSLBY=
 github.com/lysShub/tq v0.1.0/go.mod h1:K/ELI9POX81lhXHBU7flEGGpD9j3XkVRhxXsHRZHKik=
 github.com/lysShub/tq v0.1.1 h1:FF6b12ZpftRzU5mEBkIwqbpbuyGeuLdpzLEyMREiBW4=
 github.com/lysShub/tq v0.1.1/go.mod h1:K/ELI9POX81lhXHBU7flEGGpD9j3XkVRhxXsHRZHKik=
+github.com/lysShub/tq v0.1.2 h1:uNsTu5emjLdtqhaghcsRpKxVPV25qGrRLgZEIpl9kYc=
+github.com/lysShub/tq v0.1.2/go.mod h1:K/ELI9POX81lhXHBU7flEGGpD9j3XkVRhxXsHRZHKik=
+github.com/lysShub/tq v0.1.3 h1:BZnnne68A2lPqY5o126dKvMvibTn5nsk7GBJH3V/0Gw=
+github.com/lysShub/tq v0.1.3/go.mod h1:K/ELI9POX81lhXHBU7flEGGpD9j3XkVRhxXsHRZHKik=

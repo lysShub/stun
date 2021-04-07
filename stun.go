@@ -100,10 +100,10 @@ func (s *STUN) Init(isClient bool) error {
 
 	if !isClient {
 		s.dbd = new(mapdb.Db)
-		go s.dbd.Init()
+		s.dbd.Init()
 
 		s.dbt = new(mapdb.Db)
-		go s.dbt.Init()
+		s.dbt.Init()
 	}
 
 	return nil

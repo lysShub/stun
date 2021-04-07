@@ -9,42 +9,36 @@ import (
 
 /* 使用map数据结构实现的缓存简单数据库 */
 
-var InitFianal sync.WaitGroup
-
-func init() {
-	InitFianal.Add(1)
-}
-
-// 时间任务队列
-var Q *tq.TQ
-
 type Db struct {
 	// 使用map存储数据，暴露出来是为了可以持久化
 	M map[string]map[string]string
 
-	lock sync.RWMutex // 写入锁
+	lock       sync.RWMutex // 写入锁
+	initFianal sync.WaitGroup
+	q          *tq.TQ // 时间任务队列
 }
 
-// Init 阻塞函数，请用协程启动此程序以初始化
+// Init 初始化
 func (d *Db) Init() {
+	d.initFianal.Add(1)
+
 	d.M = make(map[string]map[string]string)
 
-	Q = new(tq.TQ)
-	go Q.Run()
-	tq.InitEnd.Wait()
+	d.q = new(tq.TQ)
+	d.q.Run()
 
 	var r interface{}
 	go func() {
-		InitFianal.Done()
+		d.initFianal.Done()
 		for {
-			r = (<-(Q.MQ))
+			r = (<-(d.q.MQ))
 			v, ok := r.(string)
 			if ok {
 				delete(d.M, v)
 			}
 		}
 	}()
-	InitFianal.Wait()
+	d.initFianal.Wait()
 
 }
 
@@ -76,6 +70,7 @@ func (d *Db) U(id, field, value string) {
 
 // Ut 更新表(表不存在将不会记录)
 func (d *Db) Ut(id string, t map[string]string) {
+
 	if d.M[id] == nil {
 		return
 	}
@@ -97,7 +92,7 @@ func (d *Db) Ct(id string, t map[string]string, ttl ...time.Duration) {
 
 	// ttl
 	if len(ttl) != 0 {
-		Q.Add(tq.Ts{
+		d.q.Add(tq.Ts{
 			T: ct,
 			P: id,
 		})

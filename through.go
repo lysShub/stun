@@ -105,14 +105,14 @@ func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 	}()
 	select {
 	case <-wg: // 无需操作
-	case <-time.After(time.Second * 3):
+	case <-time.After(time.Second * 30): // 匹配时间
 		return nil, errors.New("sever no reply")
 	}
 
 	/*  开始穿隧  */
 	rip := parseIP(b[24:29])
 	rport := int(b[29])<<8 + int(b[30])
-	fmt.Println("对方IP", rip.String(), rport) //己方IP没有用
+	fmt.Println("对方IP", rip.String(), rport) //
 
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 	var wh int
 	select { //阻塞 5s
 	case wh = <-ch:
-	case <-time.After(time.Second * 5):
+	case <-time.After(time.Second * 50): //超时时间
 		return nil, errors.New("超时无法完成穿隧")
 	}
 

@@ -135,7 +135,7 @@ func (s *STUN) discoverSever(da []byte, raddr *net.UDPAddr) error {
 }
 
 // DiscoverClient NAT type discover
-func (s *STUN) DiscoverClient() (int16, error) {
+func (s *STUN) DiscoverClient(fPort, sPort uint16) (int16, error) {
 	// 返回代码:
 	//  0 error
 	//  6 Full Cone or Restricted Cone
