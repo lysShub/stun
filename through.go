@@ -54,21 +54,12 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
 			// 回复之前
 			bb := append(tuuid, 2, ip1[12], ip1[13], ip1[14], ip1[15], uint8(portb>>8), uint8(portb), raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port))
-			var raddr2, laddr *net.UDPAddr
-			if raddr2, err = net.ResolveUDPAddr("udp", ip1.String()+":"+sbp); com.Errorlog(err) {
+			var firstraddr *net.UDPAddr
+			if firstraddr, err = net.ResolveUDPAddr("udp", ip1.String()+":"+sbp); com.Errorlog(err) {
 				return nil
 			}
-			if laddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port))); com.Errorlog(err) {
-				return nil
-			}
-			var conn *net.UDPConn
-			if conn, err = net.DialUDP("udp", laddr, raddr2); com.Errorlog(err) {
-				return nil
-			}
-			defer conn.Close()
-
 			for i := 0; i < 5; i++ {
-				if _, err = conn.Write(bb); com.Errorlog(err) {
+				if _, err = s.conn.WriteToUDP(bb, firstraddr); com.Errorlog(err) {
 					return nil
 				}
 			}

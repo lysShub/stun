@@ -47,7 +47,7 @@ func (s *STUN) Init(isClient bool) error {
 				s.conn = nil
 				return err
 			}
-		} else {
+		} else { // 服务器
 			l, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port)))
 			if err != nil {
 				return err
@@ -74,7 +74,7 @@ func (s *STUN) Init(isClient bool) error {
 				s.conn2 = nil
 				return err
 			}
-		} else {
+		} else { // 服务器
 			l2, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.SecondPort)))
 			if err != nil {
 				return err
@@ -86,7 +86,7 @@ func (s *STUN) Init(isClient bool) error {
 			}
 		}
 	}
-	if s.SecondNetCardIP != nil {
+	if s.SecondNetCardIP != nil { // 第二IP
 		l2, err := net.ResolveUDPAddr("udp", s.SecondNetCardIP.String()+":"+strconv.Itoa(int(s.Port)))
 		if err != nil {
 			return nil
