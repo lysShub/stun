@@ -132,12 +132,13 @@ func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 		if err != nil {
 			return nil, err
 		}
-		raddrs = append(raddrs, raddr)
 		conn, err := net.DialUDP("udp", laddr, raddr)
 		if err != nil {
 			if strings.Contains(err.Error(), "one") { // 端口被占用
+				fmt.Println(err.Error())
 				//  dial udp :4433->103.1.1.3:19986: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 				portRange++
+				fmt.Println("跳过", strconv.Itoa(rport+i))
 				continue
 			} else {
 				fmt.Println("错误序号", i)
@@ -145,7 +146,7 @@ func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
 			}
 		}
 		defer conn.Close()
-
+		raddrs = append(raddrs, raddr)
 		conns = append(conns, conn)
 	}
 
