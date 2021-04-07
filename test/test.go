@@ -14,7 +14,8 @@ func main() {
 
 	fmt.Println("开始")
 
-	fmt.Println(s.Sever())
+	// fmt.Println(s.Sever())
 	//
-
+	var suuid []byte = []byte("0123456789abcdef")
+	fmt.Println(s.ThroughClient(suuid))
 }
