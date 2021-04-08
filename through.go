@@ -12,7 +12,7 @@ import (
 )
 
 // ThroughSever
-func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
+func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 
 	tuuid := da[:17]
 	if da[17] == 1 {
@@ -29,7 +29,7 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 				"port2": strconv.Itoa(raddr.Port),
 				"type2": strconv.Itoa(int(da[18])),
 			})
-			s.reply3(tuuid)
+			s.reply3(conn, tuuid)
 		}
 
 	} else {
@@ -38,7 +38,7 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 				bstep := s.dbt.R(string(tuuid), "step")
 				if bstep < strconv.Itoa(int(da[18])) || bstep == "" {
 					s.dbt.U(string(tuuid), "step", strconv.Itoa(int(da[18])))
-					s.reply6(tuuid, raddr.Port, int(da[18]))
+					s.reply6(conn, tuuid, raddr.Port, int(da[18]))
 				}
 			}
 		} else {
@@ -49,15 +49,15 @@ func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 	return nil
 }
 
-func (s *STUN) reply3(tuuid []byte) {
+func (s *STUN) reply3(conn *net.UDPConn, tuuid []byte) {
 	var send = func(tuuid []byte, r1, r2 *net.UDPAddr, v1 uint8) {
 		var v2 uint8 = 0
 		if v1 == 0 {
 			v2 = 1
 		}
 		for i := 0; i < 5; i++ {
-			_, err1 := s.conn.WriteToUDP(append(tuuid, 3, v1, r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1)
-			_, err2 := s.conn.WriteToUDP(append(tuuid, 3, v2, r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2)
+			_, err1 := conn.WriteToUDP(append(tuuid, 3, v1, r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1)
+			_, err2 := conn.WriteToUDP(append(tuuid, 3, v2, r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2)
 			com.Errorlog(err1, err2)
 		}
 	}
@@ -76,7 +76,7 @@ func (s *STUN) reply3(tuuid []byte) {
 		s.dbt.U(string(tuuid), "lower", "2")
 	}
 }
-func (s *STUN) reply6(tuuid []byte, port, step int) {
+func (s *STUN) reply6(conn *net.UDPConn, tuuid []byte, port, step int) {
 	l := s.dbt.R(string(tuuid), "lower")
 	var hr string = "0"
 	if l < "1" {
@@ -86,16 +86,16 @@ func (s *STUN) reply6(tuuid []byte, port, step int) {
 	com.Errorlog(err)
 
 	for i := 0; i < 5; i++ {
-		_, err = s.conn.WriteToUDP(append(tuuid, 6, byte(port), uint8(step)), haddr)
+		_, err = conn.WriteToUDP(append(tuuid, 6, byte(port), uint8(step)), haddr)
 		com.Errorlog(err)
 	}
 }
 
-func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, error) {
+func (s *STUN) ThroughClient(conn *net.UDPConn, tuuid []byte, natType int) (*net.UDPAddr, error) {
 	var extPorts int = 3 // 泛端口范围
 
 	for i := 0; i < 5; i++ {
-		if _, err := s.conn.Write(append(tuuid, 1, uint8(natType))); err != nil {
+		if _, err := conn.Write(append(tuuid, 1, uint8(natType))); err != nil {
 			return nil, err
 		}
 	}
@@ -103,7 +103,7 @@ func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, error) {
 	// 等待回复
 	var j int
 	var raddr *net.UDPAddr
-	if j, raddr, err = s.read3(tuuid, time.Second*5); err != nil {
+	if j, raddr, err = s.read3(conn, tuuid, time.Second*5); err != nil {
 		return nil, errors.New("sever no reply")
 	}
 
@@ -111,19 +111,19 @@ func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, error) {
 	if j == 0 { // 	NAT限制低的一方
 
 		// 请求高的一方的主端口的泛端口
-		laddr, err := net.ResolveUDPAddr("udp", s.conn.LocalAddr().String())
+		laddr, err := net.ResolveUDPAddr("udp", conn.LocalAddr().String())
 		if com.Errorlog(err) {
 			return nil, err
 		}
-		s.conn.Close()
-		s.conn, err = net.DialUDP("udp", laddr, raddr)
+		conn.Close()
+		conn, err = net.DialUDP("udp", laddr, raddr)
 		for i := 0; i < extPorts; i++ {
 
 			for j := 0; j < 10; j++ {
-				s.conn.Write(append())
+				// conn.Write(append())
 			}
 
-			s.conn, err = upRUDPConn(s.conn)
+			conn, err = upRUDPConn(conn)
 			if com.Errorlog(err) {
 				return nil, err
 			}
@@ -140,13 +140,13 @@ func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, error) {
 }
 
 // 注意读取容量 第一个返回参数应该是0或1、表示相对NAT限制高低，第二第三个参数返回的是对方的IP和主端口
-func (s *STUN) read3(tuuid []byte, td time.Duration) (int, *net.UDPAddr, error) {
+func (s *STUN) read3(conn *net.UDPConn, tuuid []byte, td time.Duration) (int, *net.UDPAddr, error) {
 	var b []byte = make([]byte, 64)
 	var wg chan int = make(chan int)
 	var raddr *net.UDPAddr
 	go func() {
 		for {
-			_, err = s.conn.Read(b)
+			_, err = conn.Read(b)
 			if err != nil {
 				fmt.Println("读取错误", err)
 				wg <- 2
