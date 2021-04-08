@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/lysShub/stun/internal/com"
@@ -16,207 +14,202 @@ import (
 // ThroughSever
 func (s *STUN) throughSever(da []byte, raddr *net.UDPAddr) error {
 
-	if len(da) != 18 {
-		fmt.Println("长度不为18")
-		return nil
-	}
-	if da[17] == 1 { // 首次请求
+	tuuid := da[:17]
+	if da[17] == 1 {
+		if s.dbt.R(string(tuuid), "ip1") == "" {
+			s.dbt.Ct(string(tuuid), map[string]string{
+				"ip1":   raddr.IP.String(),
+				"port1": strconv.Itoa(raddr.Port),
+				"type1": strconv.Itoa(int(da[18])),
+			})
 
-		tuuid := da[:17]
-		if s.dbt.Et(string(tuuid)) { //双方中第二个请求
-			if s.dbt.R(string(tuuid), "ip2") == "" {
+		} else if s.dbt.R(string(tuuid), "ip2") == "" {
+			s.dbt.Ct(string(tuuid), map[string]string{
+				"ip2":   raddr.IP.String(),
+				"port2": strconv.Itoa(raddr.Port),
+				"type2": strconv.Itoa(int(da[18])),
+			})
+			s.reply3(tuuid)
+		}
 
-			}
-
-			fmt.Println("双方中第二个请求")
-			// 记录
-			s.dbt.U(string(tuuid), "ip2", raddr.IP.String())
-			s.dbt.U(string(tuuid), "port2", strconv.Itoa(raddr.Port))
-
-			// 回复
-			var ip1 = net.ParseIP(s.dbt.R(string(tuuid), "ip1"))
-			if ip1 == nil {
-				com.Errorlog(errors.New("can't read ip1, tuuid is:" + visibleSlice(tuuid)))
-				return nil
-			}
-			var sbp = s.dbt.R(string(tuuid), "port1")
-			var portb int
-			if portb, err = strconv.Atoi(sbp); err != nil {
-				com.Errorlog(errors.New("invalid port: " + err.Error()))
-				return nil
-			}
-			// 回复当前
-			bn := append(tuuid, 2, raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port), ip1[12], ip1[13], ip1[14], ip1[15], uint8(portb>>8), uint8(portb))
-			for i := 0; i < 5; i++ {
-				if _, err = s.conn.WriteToUDP(bn, raddr); com.Errorlog(err) {
-					return nil
+	} else {
+		if s.dbt.Et(string(tuuid)) {
+			if da[17] == 5 {
+				bstep := s.dbt.R(string(tuuid), "step")
+				if bstep < strconv.Itoa(int(da[18])) || bstep == "" {
+					s.dbt.U(string(tuuid), "step", strconv.Itoa(int(da[18])))
+					s.reply6(tuuid, raddr.Port, int(da[18]))
 				}
 			}
-
-			// 回复之前
-			bb := append(tuuid, 2, ip1[12], ip1[13], ip1[14], ip1[15], uint8(portb>>8), uint8(portb), raddr.IP[12], raddr.IP[13], raddr.IP[14], raddr.IP[15], uint8(raddr.Port>>8), uint8(raddr.Port))
-			var firstraddr *net.UDPAddr
-			if firstraddr, err = net.ResolveUDPAddr("udp", ip1.String()+":"+sbp); com.Errorlog(err) {
-				return nil
-			}
-			for i := 0; i < 5; i++ {
-				if _, err = s.conn.WriteToUDP(bb, firstraddr); com.Errorlog(err) {
-					return nil
-				}
-			}
-
-		} else { // 双方中第一个请求
-			if s.dbt.R(string(tuuid), "ip1") == "" {
-				fmt.Println("双方中第一个请求")
-				s.dbt.Ct(string(tuuid), map[string]string{
-					"ip1":   raddr.IP.String(),
-					"port1": strconv.Itoa(raddr.Port),
-				})
-			}
+		} else {
+			fmt.Println("tuuid不存在")
 		}
 	}
 
 	return nil
 }
 
-// ThroughClient
-func (s *STUN) ThroughClient(tuuid []byte) (*net.UDPAddr, error) {
-
-	if err = s.Init(true); err != nil { // 必须，s.conn会被重置
-		return nil, err
+func (s *STUN) reply3(tuuid []byte) {
+	var send = func(tuuid []byte, r1, r2 *net.UDPAddr, v1 uint8) {
+		var v2 uint8 = 0
+		if v1 == 0 {
+			v2 = 1
+		}
+		for i := 0; i < 5; i++ {
+			_, err1 := s.conn.WriteToUDP(append(tuuid, 3, v1, r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1)
+			_, err2 := s.conn.WriteToUDP(append(tuuid, 3, v2, r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2)
+			com.Errorlog(err1, err2)
+		}
 	}
 
-	var portRange int = 5 // 端口猜测范围
+	r1, err1 := net.ResolveUDPAddr("udp", s.dbt.R(string(tuuid), "ip1")+":"+s.dbt.R(string(tuuid), "port1"))
+	r2, err2 := net.ResolveUDPAddr("udp", s.dbt.R(string(tuuid), "ip2")+":"+s.dbt.R(string(tuuid), "port2"))
+	if com.Errorlog(err1, err2) {
+		return
+	}
 
-	_, err = s.conn.Write(append(tuuid, 1))
-	if err != nil {
-		return nil, err
+	if s.dbt.R(string(tuuid), "type1") < s.dbt.R(string(tuuid), "type2") { // 1更低
+		send(tuuid, r1, r2, 0)
+		s.dbt.U(string(tuuid), "lower", "1")
+	} else {
+		send(tuuid, r1, r2, 1)
+		s.dbt.U(string(tuuid), "lower", "2")
+	}
+}
+func (s *STUN) reply6(tuuid []byte, port, step int) {
+	l := s.dbt.R(string(tuuid), "lower")
+	var hr string = "0"
+	if l < "1" {
+		hr = "1" //通知高的一方
+	}
+	haddr, err := net.ResolveUDPAddr("udp", s.dbd.R(string(tuuid), "ip"+hr)+":"+s.dbd.R(string(tuuid), "port"+hr))
+	com.Errorlog(err)
+
+	for i := 0; i < 5; i++ {
+		_, err = s.conn.WriteToUDP(append(tuuid, 6, byte(port), uint8(step)), haddr)
+		com.Errorlog(err)
+	}
+}
+
+func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, error) {
+	var extPorts int = 3 // 泛端口范围
+
+	for i := 0; i < 5; i++ {
+		if _, err := s.conn.Write(append(tuuid, 1, uint8(natType))); err != nil {
+			return nil, err
+		}
 	}
 
 	// 等待回复
-	var b []byte = make([]byte, 512)
+	var j int
+	var raddr *net.UDPAddr
+	if j, raddr, err = s.read3(tuuid, time.Second*5); err != nil {
+		return nil, errors.New("sever no reply")
+	}
+
+	// 开始穿隧
+	if j == 0 { // 	NAT限制低的一方
+
+		// 请求高的一方的主端口的泛端口
+		laddr, err := net.ResolveUDPAddr("udp", s.conn.LocalAddr().String())
+		if com.Errorlog(err) {
+			return nil, err
+		}
+		s.conn.Close()
+		s.conn, err = net.DialUDP("udp", laddr, raddr)
+		for i := 0; i < extPorts; i++ {
+
+			for j := 0; j < 10; j++ {
+				s.conn.Write(append())
+			}
+
+			s.conn, err = upRUDPConn(s.conn)
+			if com.Errorlog(err) {
+				return nil, err
+			}
+		}
+
+	} else if j == 1 { // NAT限制高的一方
+
+	} else {
+
+		fmt.Println("非法j:", j)
+	}
+
+	return nil, nil
+}
+
+// 注意读取容量 第一个返回参数应该是0或1、表示相对NAT限制高低，第二第三个参数返回的是对方的IP和主端口
+func (s *STUN) read3(tuuid []byte, td time.Duration) (int, *net.UDPAddr, error) {
+	var b []byte = make([]byte, 64)
 	var wg chan int = make(chan int)
+	var raddr *net.UDPAddr
 	go func() {
 		for {
 			_, err = s.conn.Read(b)
 			if err != nil {
+				fmt.Println("读取错误", err)
+				wg <- 2
 				return
 			}
-			if bytes.Equal(b[:17], tuuid) {
-				fmt.Println("映射建立，成功一半")
-				wg <- 0
-				break
+			if bytes.Equal(b[:17], tuuid) && b[17] == 3 && len(b) < 25 {
+				rIP := net.IPv4(b[19], b[20], b[21], b[22])
+				rPort := int(b[23])<<8 + int(b[24])
+				raddr, err = net.ResolveUDPAddr("udp", rIP.String()+":"+strconv.Itoa(rPort))
+				if err != nil {
+					fmt.Println("生成对方地址错误", err)
+					wg <- 2
+					return
+				}
+				wg <- int(b[18])
+				return
+			} else {
+				fmt.Println("读取到但是不符合条件")
 			}
 		}
 	}()
+
 	select {
-	case <-wg: // 无需操作
-	case <-time.After(time.Second * 30): // 匹配时间
-		return nil, errors.New("sever no reply")
-	}
+	case i := <-wg: // 无需操作
+		if i != 0 || i != 1 {
+			return 0, nil, errors.New("error")
+		} else {
+			return i, raddr, nil
+		}
 
-	/*  开始穿隧  */
-	rip := parseIP(b[24:29])
-	rport := int(b[29])<<8 + int(b[30])
-	fmt.Println("对方IP", rip.String(), rport) //
-
-	s.conn.Close() // 关闭稍后重置
-	var laddr *net.UDPAddr
-	if laddr, err = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(int(s.Port))); err != nil {
-		return nil, err
+	case <-time.After(td): // 匹配时间
+		return 0, nil, errors.New("timeout")
 	}
-	var conns []*net.UDPConn
-	var raddrs []*net.UDPAddr
-	for i := 0; i < portRange; i++ { // 探测与相连的5个端口
-		raddr, err := net.ResolveUDPAddr("udp", rip.String()+":"+strconv.Itoa(rport+i))
+}
+
+// 将conn对方的端口加1
+func upRUDPConn(conn *net.UDPConn) (*net.UDPConn, error) {
+	var upPort = func(addr string) (*net.UDPAddr, error) {
+		uaddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return nil, err
 		}
-		conn, err := net.DialUDP("udp", laddr, raddr)
+		rIP := uaddr.IP.String()
+		rPort := uaddr.Port + 1
+		naddr, err := net.ResolveUDPAddr("udp", rIP+":"+strconv.Itoa(rPort))
 		if err != nil {
-			if strings.Contains(err.Error(), "one") { // 端口被占用
-				fmt.Println(err.Error())
-				//  dial udp :4433->103.1.1.3:19986: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
-				portRange++
-				fmt.Println("跳过", strconv.Itoa(rport+i))
-				continue
-			} else {
-				fmt.Println("错误序号", i)
-				return nil, err
-			}
+			return nil, err
 		}
-		defer conn.Close()
-		raddrs = append(raddrs, raddr)
-		conns = append(conns, conn)
+		return naddr, nil
+	}
+	conn.Close()
+	nRaddr, err := upPort(conn.RemoteAddr().String())
+	if err != nil {
+		return nil, err
+	}
+	nLaddr, err := net.ResolveUDPAddr("udp", conn.LocalAddr().String())
+	if err != nil {
+		return nil, err
 	}
 
-	// 收
-	var ch chan int = make(chan int, 1)
-	var da []byte = make([]byte, 64)
-	go func() {
-		var wg sync.WaitGroup
-		wg.Add(1)
-		for i, v := range conns {
-			index := i
-			conn := v
-			go func() {
-				for {
-					conn.Read(da)
-					if bytes.Equal(da[:17], tuuid) && da[17] == 3 {
-						wg.Done()
-						ch <- index
-					}
-				}
-			}()
-		}
-		wg.Wait() // 阻塞
-	}()
-
-	// 发
-	go func() {
-		for {
-			for i, v := range conns {
-				for j := 0; j < 5; j++ {
-					v.Write(append(tuuid, 3))
-				}
-				if i == 0 {
-					time.Sleep(time.Millisecond * 100)
-				}
-			}
-			time.Sleep(time.Millisecond * 50)
-		}
-	}()
-
-	var wh int
-	select { //阻塞 5s
-	case wh = <-ch:
-	case <-time.After(time.Second * 50): //超时时间
-		return nil, errors.New("超时无法完成穿隧")
+	nconn, err := net.DialUDP("udp", nLaddr, nRaddr)
+	if err != nil {
+		return nil, err
 	}
-
-	for i := 0; i < 20; i++ {
-		conns[wh].Write(append(tuuid, 3))
-	}
-
-	return raddrs[wh], nil
-}
-
-func visibleSlice(b []byte) string {
-	var r string
-	for _, v := range b {
-		r = r + strconv.Itoa(int(v)) + ""
-	}
-	return r
-}
-
-func parseIP(b []byte) net.IP {
-	var s string
-	for i := 0; i < 4; i++ {
-		if i == 3 {
-			s += strconv.Itoa(int(b[i]))
-		} else {
-			s += strconv.Itoa(int(b[i])) + `.`
-		}
-	}
-	return net.ParseIP(s)
+	return nconn, nil
 }
