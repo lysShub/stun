@@ -25,6 +25,13 @@ var errSever error = errors.New("Server no reply")
 
 // 第一第二端口
 func (s *STUN) Sever(s1, s2 int) error {
+
+	s.dbd = new(mapdb.Db)
+	s.dbd.Init()
+
+	s.dbt = new(mapdb.Db)
+	s.dbt.Init()
+
 	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(s1))
 	if err != nil {
 		return err
