@@ -1,5 +1,8 @@
 # github.com/kr/pretty v0.1.0
 ## explicit
+# github.com/lysShub/e v0.1.4
+## explicit
+github.com/lysShub/e
 # github.com/lysShub/mapdb v0.1.2
 ## explicit
 github.com/lysShub/mapdb

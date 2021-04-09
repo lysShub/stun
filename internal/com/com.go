@@ -2,21 +2,31 @@ package com
 
 import (
 	"bytes"
-	"fmt"
+	"io"
+	"log"
+	"os"
+	"runtime"
+	"strconv"
 
 	uuid "github.com/satori/go.uuid"
 )
 
-func Errorlog(errs ...error) bool {
-	var flag bool = false
-	for _, v := range errs {
-		if v != nil {
-			// log
-			fmt.Println(v)
-			flag = true
+func Errlog(err ...error) bool {
+	var haveErr bool = false
+	for i, e := range err {
+		if e != nil {
+			haveErr = true
+			_, fp, ln, _ := runtime.Caller(1) //行数
+
+			writers := []io.Writer{
+				// errLogHandle, // *os.File
+				os.Stdout, //标准输出，最后编译时可以删除
+			}
+			logger := log.New(io.MultiWriter(writers...), "", log.Ldate|log.Ltime) //|log.Lshortfile
+			logger.Println(fp + ":" + strconv.Itoa(ln) + "." + strconv.Itoa(i+1) + "==>" + e.Error())
 		}
 	}
-	return flag
+	return haveErr
 }
 
 // CreateUUID 生成id

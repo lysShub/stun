@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lysShub/e"
 	"github.com/lysShub/stun/internal/com"
 )
 
@@ -30,7 +31,7 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
 		var st int
-		if st, err = strconv.Atoi(v); err != nil {
+		if st, err = strconv.Atoi(v); e.Errlog(err) {
 			return nil
 		}
 		if st >= int(step) { // 记录已经存在
@@ -44,7 +45,7 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 	// 回复函数
 	var S = func(raddr *net.UDPAddr, da []byte) error {
 		for i := 0; i < t; i++ {
-			if _, err = conn.WriteToUDP(da[:18], raddr); err != nil {
+			if _, err = conn.WriteToUDP(da[:18], raddr); e.Errlog(err) {
 				return err
 			}
 		}
@@ -64,7 +65,7 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 		D["cl"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbd.Ct(string(juuid), D)
 
-		if err = S(raddr, append(juuid, 2)); err != nil {
+		if err = S(raddr, append(juuid, 2)); e.Errlog(err) {
 			return err
 		}
 	} else {
@@ -79,7 +80,7 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 			return nil
 		}
 		var rNatAddr1 *net.UDPAddr
-		if rNatAddr1, err = net.ResolveUDPAddr("udp", string(nIP1)+":"+string(nPort1)); err != nil {
+		if rNatAddr1, err = net.ResolveUDPAddr("udp", string(nIP1)+":"+string(nPort1)); e.Errlog(err) {
 			return err
 		}
 
@@ -92,11 +93,11 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 
 			if strconv.Itoa(raddr.Port) == string(nPort1) { //两次请求端口相同、锥形NAT，需进一步判断 回复4和5
 
-				if err = S(rNatAddr1, append(juuid, 4)); err != nil { //4
+				if err = S(rNatAddr1, append(juuid, 4)); e.Errlog(err) { //4
 					return err
 				}
 
-				if err = S(rNatAddr1, append(juuid, 5)); err != nil { //5
+				if err = S(rNatAddr1, append(juuid, 5)); e.Errlog(err) { //5
 					return err
 				}
 
@@ -104,14 +105,14 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 				if raddr.Port == int(da[18])<<8+int(da[19]) && nPort1 == s.dbd.R(string(juuid), "c1") { // 两次网关与使用端口相同，公网IP 9
 
 					s.dbd.U(string(juuid), "type", "9")
-					if err = S(rNatAddr1, append(juuid, 9)); err != nil {
+					if err = S(rNatAddr1, append(juuid, 9)); e.Errlog(err) {
 						return err
 					}
 
 				} else {
 					s.dbd.U(string(juuid), "type", "13")
 
-					if err = S(rNatAddr1, append(juuid, 0xd)); err != nil {
+					if err = S(rNatAddr1, append(juuid, 0xd)); e.Errlog(err) {
 						return err
 					}
 				}
@@ -122,12 +123,12 @@ func (s *STUN) DiscoverSever(conn *net.UDPConn, s1, s2 int, da []byte, raddr *ne
 			if s.secondIPConn != nil {
 				da[17] = 7
 				for i := 0; i < t; i++ {
-					if _, err = s.secondIPConn.WriteToUDP(da[:18], raddr); err != nil {
+					if _, err = s.secondIPConn.WriteToUDP(da[:18], raddr); e.Errlog(err) {
 						return err
 					}
 				}
 				da[17] = 8
-				if err = S(raddr, da); err != nil {
+				if err = S(raddr, da); e.Errlog(err) {
 					return err
 				}
 
@@ -164,25 +165,13 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int16, error) {
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 
-	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(c1))
-	if err != nil {
-		return 0, err
-	}
-	laddr2, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(c2))
-	if err != nil {
-		return 0, err
-	}
-	raddr, err := net.ResolveUDPAddr("udp", sever+":"+strconv.Itoa(s1))
-	if err != nil {
-		return 0, err
-	}
-	conn, err := net.DialUDP("udp", laddr, raddr)
-	if err != nil {
+	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.IP(sever), Port: s1})
+	if e.Errlog(err) {
 		return 0, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", laddr2, raddr)
-	if err != nil {
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.IP(sever), Port: s1})
+	if e.Errlog(err) {
 		return 0, err
 	}
 	defer conn2.Close()
@@ -230,23 +219,23 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int16, error) {
 
 	// 发 1
 	da = append(da, 1, uint8(c1>>8), uint8(c1))
-	if err = S(conn, da); err != nil {
+	if err = S(conn, da); e.Errlog(err) {
 		return 0, err
 	}
 
 	// 收 2
-	if err = R(td, 2); err != nil {
+	if err = R(td, 2); e.Errlog(err) {
 		return 0xe, errSever
 	}
 
 	// 第二端口发 3
-	if err = S(conn2, append(juuid, 3, uint8(c2>>8), uint8(c2))); err != nil {
+	if err = S(conn2, append(juuid, 3, uint8(c2>>8), uint8(c2))); e.Errlog(err) {
 		return 0, err
 	}
 
 	// 收  9,d,4,5
 	err = R(td, 9, 0xd, 4, 5)
-	if err != nil {
+	if e.Errlog(err) {
 		return 0, err
 	} else if da[17] == 9 { //公网IP
 		return 9, nil
@@ -257,7 +246,7 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int16, error) {
 	} else if da[17] == 4 || da[17] == 5 {
 		if da[17] == 5 {
 			err = R(td, 4)
-			if err != nil {
+			if e.Errlog(err) {
 				if strings.Contains(err.Error(), "time") {
 					da[17] = 0xc // 收到5，收不到4
 					S(conn, da[:18])
@@ -269,13 +258,13 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int16, error) {
 		// 至此，起码已经收到4；为完全锥形或IP限制锥形，接下来可能有进一步判断
 
 		// 发6
-		if err = S(conn, append(juuid, 6)); err != nil {
+		if err = S(conn, append(juuid, 6)); e.Errlog(err) {
 			return 0, err
 		}
 
 		// 收 第二IP的包Juuid:7 或 Juuid:8 或 6和超时(没有区分)
 		err = R(td, 6, 7, 8)
-		if err != nil || da[17] == 6 {
+		if e.Errlog(err) || da[17] == 6 {
 			if strings.Contains(err.Error(), "time") { //超时或返回6 不区分
 				return 6, nil
 			}
@@ -285,7 +274,7 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int16, error) {
 			if da[17] == 8 { //收到8，尝试接收7
 
 				err = R(td, 7)
-				if err != nil {
+				if e.Errlog(err) {
 					if strings.Contains(err.Error(), "time") { //超时
 						S(conn, append(juuid, 18))
 						return 0xb, nil
