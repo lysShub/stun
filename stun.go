@@ -59,15 +59,23 @@ func (s *STUN) Sever(s1, s2 int) error {
 	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s1}); e.Errlog(err) {
 		return err
 	}
+	var conn2 *net.UDPConn
+	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s2}); e.Errlog(err) {
+		return err
+	}
 
 	var da []byte = make([]byte, 256)
+	var raddr *net.UDPAddr
+	var n int
 	for {
-		n, raddr, err := conn.ReadFromUDP(da)
-		e.Errlog(err)
+
+		if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
+			continue
+		}
 
 		if da[0] == 'J' { //NAT判断
 			fmt.Println("接收到数据J")
-			if err = s.DiscoverSever(conn, 19986, 19987, da[:n], raddr); e.Errlog(err) {
+			if err = s.DiscoverSever(conn, conn2, da[:n], raddr); e.Errlog(err) {
 				continue
 			}
 
