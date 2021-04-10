@@ -8,6 +8,7 @@ import (
 
 func main() {
 	var s = new(stun.STUN)
+	s.Iterate = 5
 
 	fmt.Println("开始")
 

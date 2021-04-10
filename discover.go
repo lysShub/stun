@@ -166,12 +166,12 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int, error) {
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 
-	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.IP(sever), Port: s1})
+	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.ParseIP(sever), Port: s1})
 	if e.Errlog(err) {
 		return -1, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.IP(sever), Port: s1})
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.ParseIP(sever), Port: s1})
 	if e.Errlog(err) {
 		return -1, err
 	}
