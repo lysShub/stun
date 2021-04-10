@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lysShub/stun"
 )
@@ -9,6 +10,8 @@ import (
 func main() {
 	var s = new(stun.STUN)
 	s.Iterate = 5
+	s.MatchTime = time.Minute * 20
+	s.TimeOut = time.Second * 2
 
 	fmt.Println("开始")
 
