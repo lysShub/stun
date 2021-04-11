@@ -107,7 +107,7 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 					}
 
 				} else { // 对称NAT
-
+					fmt.Println("数据：", natAddr1.IP.String(), natAddr1.Port, raddr.IP.String(), raddr.Port)
 					if raddr.Port-natAddr1.Port == 1 { // 顺序
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
 							return err
