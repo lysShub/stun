@@ -15,6 +15,7 @@ import (
 func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 
 	tuuid := da[:17]
+	fmt.Println("tuuid:::::::::::::::", tuuid)
 	if da[17] == 10 {
 		if len(da) < 21 {
 			return errors.New("长度小于21")
