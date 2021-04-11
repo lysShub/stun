@@ -132,6 +132,8 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 
 func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
 	var rPort1 int
+	fmt.Println("port1:::::::::::::::::::::", s.dbt.R(string(tuuid), "port1"))
+
 	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
 		return err
 	}
