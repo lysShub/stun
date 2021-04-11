@@ -59,7 +59,7 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 		D["step"] = "1"
 		D["IP1"] = raddr.IP.String()                         // 第一NAT网关IP
 		D["Port1"] = strconv.Itoa(raddr.Port)                // 第一NAT网关端口
-		D["cl"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
+		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbd.Ct(string(juuid), D)
 
 		if err = S(conn, raddr, append(juuid, 2)); e.Errlog(err) {
@@ -108,6 +108,7 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 				} else { // 对称NAT
 					fmt.Println("数据：", natAddr1.IP.String(), natAddr1.Port, raddr.IP.String(), raddr.Port)
+
 					if raddr.Port-natAddr1.Port == 1 { // 顺序
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
 							return err

@@ -1,0 +1,2 @@
+sudo echo 140.82.113.3 github.com >> /etc/hosts
+sudo systemd-resolve --flush-caches
