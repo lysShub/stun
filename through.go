@@ -141,9 +141,9 @@ func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error
 	if conn1, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}, r1); err != nil {
 		return err
 	}
-	var ep string = s.dbt.R(string(tuuid), "nat1")
-	if ep < s.dbt.R(string(tuuid), "nat2") {
-		ep = s.dbt.R(string(tuuid), "nat2")
+	var ep string = s.dbt.R(string(tuuid), "ep1")
+	if ep < s.dbt.R(string(tuuid), "ep2") {
+		ep = s.dbt.R(string(tuuid), "ep2")
 	}
 	var epint int
 	if epint, err = strconv.Atoi(ep); err != nil {
