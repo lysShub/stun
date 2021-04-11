@@ -16,6 +16,9 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 
 	tuuid := da[:17]
 	if da[17] == 10 {
+		if len(da) < 21 {
+			return errors.New("长度小于21")
+		}
 		if s.dbt.R(string(tuuid), "ip1") == "" {
 			s.dbt.Ct(string(tuuid), map[string]string{
 				"ip1":   raddr.IP.String(),
@@ -23,6 +26,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 				"nat1":  strconv.Itoa(int(da[18])),
 				"ep1":   strconv.Itoa(int(da[19])<<8 + int(da[20])),
 			})
+			fmt.Print("第一个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
 
 		} else if s.dbt.R(string(tuuid), "ip2") == "" {
 			s.dbt.Ct(string(tuuid), map[string]string{
@@ -31,6 +35,8 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 				"nat2":  strconv.Itoa(int(da[18])),
 				"ep2":   strconv.Itoa(int(da[19])<<8 + int(da[20])),
 			})
+			fmt.Print("第二个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
+
 			/* 回复 */
 			if err = s.send20(tuuid, raddr, conn); e.Errlog(err) {
 				return err
@@ -54,19 +60,21 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 	}
 	defer conn.Close()
 
+	// 发10
 	for i := 0; i < s.Iterate; i++ {
-		if _, err := conn.Write(append(tuuid, 1, uint8(natType))); e.Errlog(err) {
+		if _, err := conn.Write(append(tuuid, 10, uint8(natType), uint8(s.ExtPorts>>8), uint8(s.ExtPorts))); e.Errlog(err) {
 			return nil, 0, err
 		}
 	}
 
-	// 等待回复
+	// 等待匹配完成 收20
 	var rnat, ep int        // nat类型 泛端口长度
 	var cRaddr *net.UDPAddr // 对方使用端口对应的网关地址
 	if rnat, ep, cRaddr, err = s.read20(conn, tuuid); e.Errlog(err) {
 		return nil, 0, errors.New("sever no reply")
 	}
 	conn.Close()
+	fmt.Println("匹配成功")
 
 	// 开始穿隧
 	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: port}); e.Errlog(err) {
@@ -156,19 +164,20 @@ func (s *STUN) read20(conn *net.UDPConn, tuuid []byte) (int, int, *net.UDPAddr, 
 	var t, ep int = 0, 0
 	var flag bool = true
 	go func() {
+		var n int
 		for flag {
-			if _, err = conn.Read(b); err != nil {
+			if n, err = conn.Read(b); err != nil {
 				wg <- err
 				return
 			}
-			if bytes.Equal(b[:17], tuuid) && b[17] == 20 && len(b) >= 27 {
+			if bytes.Equal(b[:17], tuuid) && b[17] == 20 && n >= 27 {
 				t = int(b[18])
 				ep = int(b[19])<<8 + int(b[20])
 				raddr = &net.UDPAddr{IP: net.IPv4(b[21], b[22], b[23], b[24]), Port: int(b[25])<<8 + int(b[26])}
 				wg <- nil
 				return
 			} else {
-				fmt.Println("读取到但是不符合条件")
+				fmt.Println("读取到但是不符合条件", b[17], n)
 			}
 		}
 	}()

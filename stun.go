@@ -111,13 +111,11 @@ func (s *STUN) RunSever() error {
 		}
 
 		if da[0] == 'J' { //NAT判断
-			fmt.Println("接收到数据J")
 			if err = s.discoverSever(conn, conn2, da[:n], raddr); e.Errlog(err) {
 				continue
 			}
 
 		} else if da[0] == 'T' {
-			fmt.Println("接收到数据T")
 			if err = s.throughSever(conn, da[:n], raddr); e.Errlog(err) {
 				continue
 			}
@@ -125,7 +123,8 @@ func (s *STUN) RunSever() error {
 	}
 }
 
-func (s *STUN) RunClient(port int) (R, error) {
+// RunClient id双方要相同
+func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
 	for i := 0; i < 3; i++ {
 		var tlnat int
@@ -138,8 +137,13 @@ func (s *STUN) RunClient(port int) (R, error) {
 	fmt.Println("NAT类型:", lnat)
 
 	// 尝试穿隧
+	raddr, rnat, err := s.throughClient(append([]byte("T"), id[:]...), port, lnat)
+	if e.Errlog(err) {
+		fmt.Println("对方nat", rnat)
+		return R{}, nil
+	}
 
-	return R{}, nil
+	return R{Raddr: raddr, RNat: rnat, LNat: lnat}, nil
 }
 
 func domainToIP(sever string) (string, error) {
