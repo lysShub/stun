@@ -27,11 +27,14 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 				"nat1":  strconv.Itoa(int(da[18])),
 				"ep1":   strconv.Itoa(int(da[19])<<8 + int(da[20])),
 			})
-			fmt.Print("第一个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
+			fmt.Println("第一个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
 			// 221.197.232.84 55804 15 3
 			if s.dbt.R(string(tuuid), "ip1") == "" {
 				fmt.Println("-------------------------写入失败-------------------------------")
 			}
+			fmt.Println("-------------------------------------------------------------------")
+			fmt.Println("刚写入的port1", s.dbt.R(string(tuuid), "port1"))
+			fmt.Println("-------------------------------------------------------------------")
 
 		} else if s.dbt.R(string(tuuid), "ip2") == "" {
 			s.dbt.Ct(string(tuuid), map[string]string{
@@ -40,7 +43,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 				"nat2":  strconv.Itoa(int(da[18])),
 				"ep2":   strconv.Itoa(int(da[19])<<8 + int(da[20])),
 			})
-			fmt.Print("第二个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
+			fmt.Println("第二个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
 
 			/* 回复 */
 			if err = s.send20(tuuid, raddr, conn); e.Errlog(err) {
