@@ -132,7 +132,7 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 
 func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
 	var rPort1 int
-	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); err != nil {
+	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
 		return err
 	}
 	var r1, r2 *net.UDPAddr = nil, raddr
@@ -146,7 +146,7 @@ func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error
 		ep = s.dbt.R(string(tuuid), "ep2")
 	}
 	var epint int
-	if epint, err = strconv.Atoi(ep); err != nil {
+	if epint, err = strconv.Atoi(ep); e.Errlog(err) {
 		return err
 	}
 
