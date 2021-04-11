@@ -24,17 +24,17 @@ func main() {
 	s.SeverPort = 19986
 
 	/* sever */
-	fmt.Println("开始")
-	if err := s.Init(false); e.Errlog(err) {
-		return
-	}
-	s.RunSever()
-
-	/* client */
 	// fmt.Println("开始")
-	// if err := s.Init(true); e.Errlog(err) {
+	// if err := s.Init(false); e.Errlog(err) {
 	// 	return
 	// }
-	// fmt.Println(s.RunClient(8089, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
+	// s.RunSever()
+
+	/* client */
+	fmt.Println("开始")
+	if err := s.Init(true); e.Errlog(err) {
+		return
+	}
+	fmt.Println(s.RunClient(8089, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
 
 }
