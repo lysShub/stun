@@ -46,10 +46,10 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 
 // ThroughClient
 // 返回对方网关地址和对方NAT类型
-func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, int, error) {
+func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int, error) {
 
 	var conn *net.UDPConn
-	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.C1}, &net.UDPAddr{IP: s.SIP, Port: s.S1}); e.Errlog(err) {
+	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}); e.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()
@@ -61,15 +61,15 @@ func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, int, erro
 	}
 
 	// 等待回复
-	var nat, ep int         // nat类型 泛端口长度
+	var rnat, ep int        // nat类型 泛端口长度
 	var cRaddr *net.UDPAddr // 对方使用端口对应的网关地址
-	if nat, ep, cRaddr, err = s.read20(conn, tuuid); e.Errlog(err) {
+	if rnat, ep, cRaddr, err = s.read20(conn, tuuid); e.Errlog(err) {
 		return nil, 0, errors.New("sever no reply")
 	}
 	conn.Close()
 
 	// 开始穿隧
-	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.C1}); e.Errlog(err) {
+	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: port}); e.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()
@@ -111,10 +111,10 @@ func (s *STUN) ThroughClient(tuuid []byte, natType int) (*net.UDPAddr, int, erro
 	select {
 	case r := <-ch:
 		// 穿隧成功
-		return r, nat, nil
+		return r, rnat, nil
 	case <-time.After(time.Second * 2):
 		// 穿隧失败
-		return nil, 0, nil
+		return nil, rnat, nil
 	}
 }
 
@@ -126,7 +126,7 @@ func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error
 	var r1, r2 *net.UDPAddr = nil, raddr
 	r1 = &net.UDPAddr{IP: net.ParseIP(s.dbt.R(string(tuuid), "ip1")), Port: rPort1}
 	var conn1, conn2 *net.UDPConn = nil, conn
-	if conn1, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.S1}, r1); err != nil {
+	if conn1, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}, r1); err != nil {
 		return err
 	}
 	var ep string = s.dbt.R(string(tuuid), "nat1")

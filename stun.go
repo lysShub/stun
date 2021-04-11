@@ -11,56 +11,93 @@ import (
 )
 
 type STUN struct {
-	// 服务器第一端口，默认19986
-	S1 int
-	// 服务器第二端口，仅sever，默认19987
-	S2 int
-	// 客户端第一端口，默认19986
-	C1 int
-	// 客户端第二端口，默认19987
-	C2 int
-	// 第二IP，仅sever，可选
-	SIP net.IP
-	// 同数据包重复发送次数，由于UDP可靠，默认5
+	// 服务器地址，IP或域名，仅client
+	Sever string
+	// 服务器端口
+	SeverPort int
+	// 同数据包重复发送次数，确保UDP可靠，默认5
 	Iterate int
-	// 匹配时长，默认1d
+	// 匹配时长，默认30m
 	MatchTime time.Duration
 	// 超时时间，默认3s
 	TimeOut time.Duration
-	// 泛端口范围
+	// 泛端口范围，默认3
 	ExtPorts int
+	// 第二IP，可选，仅sever
+	SIP net.IP
 
 	/* 私有 */
 	dbd          *mapdb.Db    // NAT类型判断的数据库
 	dbt          *mapdb.Db    // NAT穿隧数据库
 	secondIPConn *net.UDPConn // 第二IP的UDPconn
+	s1           int          // 服务器第一端口，与SeverPort相同
+	s2           int          // 服务器第二端口
+}
+
+type R struct {
+	// 对方网关地址
+	Raddr net.Addr
+	// 对方NAT类型
+	RNat int
+	// 己方NAT类型
+	LNat int
 }
 
 var err error
 var errSever error = errors.New("Server no reply")
 
-// 第一第二端口
-func (s *STUN) Sever(s1, s2 int) error {
+// Init ic==true meaning initialize for client
+func (s *STUN) Init(ic bool) error {
 
-	s.dbd = new(mapdb.Db)
-	s.dbd.Init()
-	s.dbt = new(mapdb.Db)
-	s.dbt.Init()
+	if s.Iterate == 0 {
+		s.Iterate = 5
+	}
+	if s.MatchTime == 0 {
+		s.MatchTime = time.Minute * 30
+	}
+	if s.TimeOut == 0 {
+		s.TimeOut = time.Second * 3
+	}
+	if s.ExtPorts == 0 {
+		s.ExtPorts = 3
+	}
+	if s.SeverPort == 0 {
+		return errors.New("Please set field SeverPort. ")
+	} else {
+		s.s1 = s.SeverPort
+		s.s2 = s.SeverPort + 1
+	}
+	if ic { //client
+		if s.Sever == "" {
+			return errors.New("Please set field Sever. ")
+		} else {
+			if s.Sever, err = domainToIP(s.Sever); e.Errlog(err) { //可能是域名
+				return errors.New("invlid field Sever.")
+			}
+		}
+	} else { //sever
+		s.dbd = new(mapdb.Db)
+		s.dbd.Init()
+		s.dbt = new(mapdb.Db)
+		s.dbt.Init()
 
-	if s.SIP != nil {
-
-		if s.secondIPConn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.SIP, Port: s1}); e.Errlog(err) {
-			s.secondIPConn = nil
-			return err
+		if s.SIP != nil {
+			if s.secondIPConn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.SIP, Port: s.SeverPort}); e.Errlog(err) {
+				return errors.New("invlid field SIP. ")
+			}
 		}
 	}
+	return nil
+}
+
+func (s *STUN) RunSever() error {
 
 	var conn *net.UDPConn
-	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s1}); e.Errlog(err) {
+	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}); e.Errlog(err) {
 		return err
 	}
 	var conn2 *net.UDPConn
-	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s2}); e.Errlog(err) {
+	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s2}); e.Errlog(err) {
 		return err
 	}
 
@@ -75,7 +112,7 @@ func (s *STUN) Sever(s1, s2 int) error {
 
 		if da[0] == 'J' { //NAT判断
 			fmt.Println("接收到数据J")
-			if err = s.DiscoverSever(conn, conn2, da[:n], raddr); e.Errlog(err) {
+			if err = s.discoverSever(conn, conn2, da[:n], raddr); e.Errlog(err) {
 				continue
 			}
 
@@ -86,4 +123,51 @@ func (s *STUN) Sever(s1, s2 int) error {
 			}
 		}
 	}
+}
+
+func (s *STUN) RunClient(port int) (R, error) {
+	var lnats []int
+	for i := 0; i < 3; i++ {
+		var tlnat int
+		if tlnat, err = s.discoverClient(port); e.Errlog(err) {
+			return R{}, err
+		}
+		lnats = append(lnats, tlnat)
+	}
+	lnat := selectMost(lnats)
+	fmt.Println("NAT类型:", lnat)
+
+	// 尝试穿隧
+
+	return R{}, nil
+}
+
+func domainToIP(sever string) (string, error) {
+	if r := net.ParseIP(sever); r == nil { //可能是域名
+		var ips []net.IP
+		if ips, err = net.LookupIP(sever); err != nil {
+			return "", err
+		}
+		for _, ip := range ips {
+			if ipv4 := ip.To4(); ipv4 != nil {
+				return ipv4.String(), nil
+			}
+		}
+	}
+	return sever, nil
+}
+
+func selectMost(l []int) int {
+	var m map[int]int = make(map[int]int)
+	for _, v := range l {
+		m[v] = m[v] + 1
+	}
+	var c, r int = 0, 0
+	for k, v := range m {
+		if v > c {
+			c = v
+			r = k
+		}
+	}
+	return r
 }

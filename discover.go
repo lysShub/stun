@@ -3,7 +3,6 @@ package stun
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -15,10 +14,9 @@ import (
 
 // DiscoverSever
 // 参数为第一端口和第二端口，接收到的数据，对方的地址
-func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
+func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 
 	if len(da) < 18 {
-		fmt.Println("长度小于18")
 		return nil
 	}
 	step := int(da[17])
@@ -32,7 +30,6 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 			return nil
 		}
 		if st >= int(step) { // 记录已经存在
-			fmt.Println("拦截", juuid, step)
 			return nil
 		} else { // 更新step
 			s.dbd.U(string(juuid), "step", strconv.Itoa(int(step)))
@@ -52,7 +49,6 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 	/* 开始 */
 	if step == 1 {
 		if len(da) != 20 {
-			fmt.Println("第一次长度不为20")
 			return nil
 		}
 		var D map[string]string = make(map[string]string)
@@ -69,11 +65,9 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 		var IP1, Port1 string
 		if Port1 = s.dbd.R(string(juuid), "Port1"); Port1 == "" {
-			fmt.Println("没有获取到数据")
 			return nil
 		}
 		if IP1 = s.dbd.R(string(juuid), "IP1"); IP1 == "" {
-			fmt.Println("没有获取到数据")
 			return nil
 		}
 		var natAddr1 *net.UDPAddr
@@ -84,7 +78,6 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 		if step == 3 { //3
 
 			if len(da) != 20 {
-				fmt.Println("第3次长度不为20")
 				return nil
 			}
 
@@ -150,7 +143,7 @@ func (s *STUN) DiscoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 // DiscoverClient
 // 参数：c1,c2,s1,s2是端口，sever是服务器IP或域名
-func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int, error) {
+func (s *STUN) discoverClient(port int) (int, error) {
 	// 返回代码:
 	// -1 错误
 	//  0 无响应
@@ -162,17 +155,19 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int, error) {
 	//  e 顺序对称形NAT
 	//  f 无序对称NAT
 
+	var c1, c2 int = port, port + 1
+
 	var juuid []byte
 	juuid = append(juuid, 'J')
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 
-	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.ParseIP(sever), Port: s1})
+	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1})
 	if e.Errlog(err) {
 		return -1, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.ParseIP(sever), Port: s1})
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1})
 	if e.Errlog(err) {
 		return -1, err
 	}
@@ -226,7 +221,7 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int, error) {
 	}
 
 	// 收 2
-	if err = R(2); e.Errlog(err) {
+	if err = R(2); err != nil {
 		return distinguish(err)
 	}
 
@@ -237,7 +232,7 @@ func (s *STUN) DiscoverClient(c1, c2, s1, s2 int, sever string) (int, error) {
 
 	// 收  4、5，9，0xe,0xf
 	err = R(4, 5, 9, 0xe, 0xf)
-	if e.Errlog(err) {
+	if err != nil {
 		return distinguish(err)
 
 	} else if da[17] == 9 || da[17] == 0xe || da[17] == 0xf { //公网IP、对称NAT
