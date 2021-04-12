@@ -79,7 +79,7 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 		if step == 3 { //3
 
-			if len(da) != 20 {
+			if len(da) != 20 || s.dbd.R(string(juuid), "step") <= "3" {
 				return nil
 			}
 
@@ -92,13 +92,13 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 				if err = S(conn, natAddr1, append(juuid, 5)); e.Errlog(err) { //5
 					return err
 				}
-
+				s.dbd.U(string(juuid), "step", "5")
 			} else {
 
 				if raddr.Port == int(da[18])<<8+int(da[19]) && Port1 == s.dbd.R(string(juuid), "c1") {
 					// 两次网关端口与使用端口相同，公网IP 9
 
-					s.dbd.U(string(juuid), "type", "9")
+					s.dbd.U(string(juuid), "step", "9")
 					if err = S(conn, natAddr1, append(juuid, 9)); e.Errlog(err) {
 						return err
 					}
@@ -109,12 +109,12 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
 							return err
 						}
-						s.dbd.U(string(juuid), "type", "14")
+						s.dbd.U(string(juuid), "step", "14")
 					} else {
 						if err = S(conn, natAddr1, append(juuid, 0xf)); e.Errlog(err) {
 							return err
 						}
-						s.dbd.U(string(juuid), "type", "15")
+						s.dbd.U(string(juuid), "step", "15")
 					}
 
 				}
@@ -131,14 +131,14 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 				if err = S(conn, raddr, append(juuid, 8)); e.Errlog(err) {
 					return err
 				}
-				s.dbd.U(string(juuid), "type", "8")
+				s.dbd.U(string(juuid), "step", "8")
 			} else { // 不区分，也回复6
-				s.dbd.U(string(juuid), "type", "12")
+				s.dbd.U(string(juuid), "step", "12")
 				S(conn, raddr, append(juuid, 0xc))
 			}
 
 		} else if step == 0xa || step == 0xb || step == 0xd { //a b d
-			s.dbd.U(string(juuid), "type", strconv.Itoa(int(step)))
+			s.dbd.U(string(juuid), "step", strconv.Itoa(int(step)))
 		}
 	}
 	return nil
