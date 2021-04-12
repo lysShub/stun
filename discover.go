@@ -79,7 +79,7 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 		if step == 3 { //3
 
-			if len(da) != 20 || s.dbd.R(string(juuid), "step") > "3" {
+			if len(da) != 20 && s.dbd.R(string(juuid), "step") > "3" {
 				return nil
 			}
 
@@ -105,6 +105,7 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 				} else { // 对称NAT
 					fmt.Println("第一次网关端口：", natAddr1.Port, "第二次网关端口", raddr.Port)
+
 					if raddr.Port-natAddr1.Port == 1 { // 顺序
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
 							return err
