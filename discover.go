@@ -79,7 +79,7 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 		if step == 3 { //3
 
-			if len(da) != 20 || s.dbd.R(string(juuid), "step") <= "3" {
+			if len(da) != 20 || s.dbd.R(string(juuid), "step") >= "3" {
 				return nil
 			}
 
