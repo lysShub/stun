@@ -37,7 +37,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 				"ep2":   strconv.Itoa(int(da[19])<<8 + int(da[20])),
 			})
 
-			fmt.Println("-------------------------------------------------------")
+			fmt.Println("-------------------------第二个------------------------------")
 			fmt.Println(s.dbt.M)
 			fmt.Println("-------------------------------------------------------")
 
@@ -131,6 +131,7 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 }
 
 func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
+	fmt.Println("发送20")
 	var rPort1 int
 	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
 		return err
