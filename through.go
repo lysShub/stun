@@ -132,17 +132,12 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 
 func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
 	var rPort1 int
-	fmt.Println("port1:::::::::::::::::::::", s.dbt.R(string(tuuid), "port1"))
-
 	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
 		return err
 	}
 	var r1, r2 *net.UDPAddr = nil, raddr
 	r1 = &net.UDPAddr{IP: net.ParseIP(s.dbt.R(string(tuuid), "ip1")), Port: rPort1}
-	var conn1, conn2 *net.UDPConn = nil, conn
-	if conn1, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}, r1); err != nil {
-		return err
-	}
+
 	var ep string = s.dbt.R(string(tuuid), "ep1")
 	if ep < s.dbt.R(string(tuuid), "ep2") {
 		ep = s.dbt.R(string(tuuid), "ep2")
@@ -153,10 +148,10 @@ func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error
 	}
 
 	for i := 0; i < s.Iterate; i++ {
-		if _, err = conn2.WriteToUDP(append(tuuid, 20, uint8(epint), r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), raddr); err != nil {
+		if _, err = conn.WriteToUDP(append(tuuid, 20, uint8(epint), r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2); err != nil {
 			return err
 		}
-		if _, err = conn1.Write(append(tuuid, 20, uint8(epint), r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port))); err != nil {
+		if _, err = conn.WriteToUDP(append(tuuid, 20, uint8(epint), r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1); err != nil {
 			return err
 		}
 	}
