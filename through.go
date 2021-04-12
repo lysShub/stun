@@ -29,7 +29,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 			})
 			fmt.Println("第一个", raddr.IP.String(), strconv.Itoa(raddr.Port), strconv.Itoa(int(da[18])), strconv.Itoa(int(da[19])<<8+int(da[20])))
 
-		} else if s.dbt.R(string(tuuid), "ip2") == "" && s.dbt.R(string(tuuid), "ip1") != "" {
+		} else if s.dbt.R(string(tuuid), "ip2") == "" && s.dbt.R(string(tuuid), "ip1") != raddr.IP.String() && s.dbt.R(string(tuuid), "port1") != strconv.Itoa(raddr.Port) {
 			s.dbt.Ut(string(tuuid), map[string]string{
 				"ip2":   raddr.IP.String(),
 				"port2": strconv.Itoa(raddr.Port),
