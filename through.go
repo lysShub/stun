@@ -157,10 +157,10 @@ func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error
 	}
 
 	for i := 0; i < s.Iterate; i++ {
-		if _, err = conn.WriteToUDP(append(tuuid, 20, byte(inat1), uint8(epint), r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2); err != nil {
+		if _, err = conn.WriteToUDP(append(tuuid, 20, byte(inat1), uint8(epint>>8), uint8(epint), r1.IP[12], r1.IP[13], r1.IP[14], r1.IP[15], uint8(r1.Port>>8), uint8(r1.Port)), r2); err != nil {
 			return err
 		}
-		if _, err = conn.WriteToUDP(append(tuuid, 20, byte(inat2), uint8(epint), r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1); err != nil {
+		if _, err = conn.WriteToUDP(append(tuuid, 20, byte(inat2), uint8(epint>>8), uint8(epint), r2.IP[12], r2.IP[13], r2.IP[14], r2.IP[15], uint8(r2.Port>>8), uint8(r2.Port)), r1); err != nil {
 			return err
 		}
 	}
