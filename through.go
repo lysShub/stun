@@ -56,7 +56,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 
 // ThroughClient
 // 返回对方网关地址和对方NAT类型
-func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int, error) {
+func (s *STUN) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, error) {
 
 	var conn *net.UDPConn
 	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}); e.Errlog(err) {
@@ -66,7 +66,7 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 
 	// 发10
 	for i := 0; i < s.Iterate; i++ {
-		if _, err := conn.Write(append(tuuid, 10, uint8(natType), uint8(s.ExtPorts>>8), uint8(s.ExtPorts))); e.Errlog(err) {
+		if _, err := conn.Write(append(tuuid, 10, uint8(lnat), uint8(s.ExtPorts>>8), uint8(s.ExtPorts))); e.Errlog(err) {
 			return nil, 0, err
 		}
 	}
@@ -79,6 +79,10 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 	}
 	conn.Close()
 	fmt.Println("匹配成功")
+	if lnat > rnat {
+		fmt.Println("我更严格，我休息一会")
+		time.Sleep(time.Millisecond * 100 * time.Duration(s.Iterate))
+	}
 
 	// 开始穿隧
 	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: port}); e.Errlog(err) {
@@ -87,11 +91,16 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 	defer conn.Close()
 
 	var flag bool = true
+	var tt int = 0
 	go func() { // 向对方泛端口发送数据 30
 		for flag {
 			for i := cRaddr.Port; i < cRaddr.Port+ep; i++ {
 				conn.WriteToUDP(append(tuuid, 30), &net.UDPAddr{IP: cRaddr.IP, Port: i})
+				if tt == 0 {
+					fmt.Println("send 20:", conn.LocalAddr().String(), "___", cRaddr.IP, i)
+				}
 			}
+			tt++
 			time.Sleep(time.Millisecond * 100)
 		}
 	}()
@@ -101,10 +110,13 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 		var da []byte = make([]byte, 64)
 		var nRaddr *net.UDPAddr
 		for flag {
-			if _, nRaddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
+			if _, nRaddr, err = conn.ReadFromUDP(da); flag == true && e.Errlog(err) {
 				continue
 			}
-			if bytes.Equal(tuuid, da[:17]) && (da[17] == 30 || da[17] == 40) {
+			if nRaddr != nil {
+				fmt.Println("读取到数据", nRaddr.IP)
+			}
+			if bytes.Equal(tuuid, da[:17]) && (da[17] == 30 || da[17] == 40) && nRaddr != nil {
 				if da[17] == 30 { // 收到30，回复40后退出
 					for i := 0; i < s.Iterate*4; i++ {
 						if _, err = conn.WriteToUDP(append(tuuid, 40), nRaddr); e.Errlog(err) {
@@ -124,9 +136,10 @@ func (s *STUN) throughClient(tuuid []byte, port, natType int) (*net.UDPAddr, int
 	case r := <-ch:
 		// 穿隧成功
 		return r, rnat, nil
-	case <-time.After(time.Second * 2):
+	case <-time.After(time.Second * 6):
 		// 穿隧失败
-		return nil, rnat, nil
+		flag = false
+		return nil, rnat, errors.New("超时，穿隧失败")
 	}
 }
 
@@ -187,7 +200,7 @@ func (s *STUN) read20(conn *net.UDPConn, tuuid []byte) (int, int, *net.UDPAddr, 
 				wg <- nil
 				return
 			} else {
-				fmt.Println("读取到但是不符合条件", b[17], n)
+				fmt.Println("du qu dao dan si bu fu he tiao jian", b[17], n, conn.RemoteAddr())
 			}
 		}
 	}()
