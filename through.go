@@ -100,6 +100,9 @@ func (s *STUN) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, e
 					fmt.Println("send 20:", conn.LocalAddr().String(), "___", cRaddr.IP, i)
 				}
 			}
+			if tt == 0 {
+				conn.WriteToUDP([]byte("safa"), &net.UDPAddr{IP: net.ParseIP("114.116.254.26"), Port: 19987})
+			}
 			tt++
 			time.Sleep(time.Millisecond * 100)
 		}
