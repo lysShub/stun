@@ -24,7 +24,7 @@ type STUN struct {
 	MatchTime time.Duration
 	// 超时时间，默认3s
 	TimeOut time.Duration
-	// 泛端口范围，默认3
+	// 泛端口范围，默认7
 	ExtPorts int
 	// 第二IP，可选，仅sever
 	SIP net.IP
@@ -62,7 +62,7 @@ func (s *STUN) Init(ic bool) error {
 		s.TimeOut = time.Second * 3
 	}
 	if s.ExtPorts == 0 {
-		s.ExtPorts = 3
+		s.ExtPorts = 7
 	}
 	if s.SeverPort == 0 {
 		return errors.New("Please set field SeverPort. ")
