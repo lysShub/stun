@@ -1,9 +1,12 @@
 package stun
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/lysShub/e"
@@ -128,8 +131,12 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
 	for i := 0; i < 3; i++ {
 		var tlnat int
-		if tlnat, err = s.discoverClient(port); e.Errlog(err) {
-			return R{}, err
+		if tlnat, err = s.discoverClient(RandPort()); e.Errlog(err) {
+			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "other") {
+				continue // 端口被占用
+			} else {
+				return R{}, err
+			}
 		}
 		lnats = append(lnats, tlnat)
 	}
@@ -159,6 +166,16 @@ func domainToIP(sever string) (string, error) {
 		}
 	}
 	return sever, nil
+}
+
+func RandPort() int {
+	b := new(big.Int).SetInt64(int64(52000))
+	i, err := rand.Int(rand.Reader, b)
+	r := int(i.Int64()) + 100
+	if e.Errlog(err) {
+		return 52942
+	}
+	return r
 }
 
 func selectMost(l []int) int {
