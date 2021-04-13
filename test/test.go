@@ -24,11 +24,11 @@ func main() {
 	s.SeverPort = 19986
 
 	/* sever */
-	fmt.Println("开始")
-	if err := s.Init(false); e.Errlog(err) {
-		return
-	}
-	s.RunSever()
+	// fmt.Println("开始")
+	// if err := s.Init(false); e.Errlog(err) {
+	// 	return
+	// }
+	// s.RunSever()
 
 	/* client */
 	fmt.Println("开始")
