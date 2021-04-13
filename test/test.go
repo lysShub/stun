@@ -31,7 +31,7 @@ func main() {
 	// s.RunSever()
 
 	/* client */
-	fmt.Println("开始")
+	fmt.Println("开始l")
 	if err := s.Init(true); e.Errlog(err) {
 		return
 	}
