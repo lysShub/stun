@@ -97,6 +97,8 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 				if raddr.Port == int(da[18])<<8+int(da[19]) && Port1 == s.dbd.R(string(juuid), "c1") {
 					// 两次网关端口与使用端口相同，公网IP 9
+					fmt.Println("公网IP的2次4端口", raddr.Port, int(da[18])<<8+int(da[19]), Port1, s.dbd.R(string(juuid), "c1"))
+					fmt.Println("公网IP的两次IP", raddr.IP, s.dbd.R(string(juuid), "IP1"))
 
 					s.dbd.U(string(juuid), "step", "9")
 					if err = S(conn, natAddr1, append(juuid, 9)); e.Errlog(err) {
