@@ -107,7 +107,7 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 
 					fmt.Println("两次的端口", raddr.Port, natAddr1.Port)
 
-					if raddr.Port-natAddr1.Port <= 7 { // 顺序
+					if raddr.Port-natAddr1.Port <= 7 { // 几乎相连，为顺序NAT
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
 							return err
 						}
