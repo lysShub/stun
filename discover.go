@@ -3,7 +3,6 @@ package stun
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -104,7 +103,6 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 					}
 
 				} else { // 对称NAT
-					fmt.Println("第一次网关端口：", natAddr1.Port, "第二次网关端口", raddr.Port)
 
 					if raddr.Port-natAddr1.Port == 1 { // 顺序
 						if err = S(conn, natAddr1, append(juuid, 0xe)); e.Errlog(err) {
@@ -122,6 +120,10 @@ func (s *STUN) discoverSever(conn, conn2 *net.UDPConn, da []byte, raddr *net.UDP
 			}
 
 		} else if step == 6 {
+
+			if len(da) != 18 && s.dbd.R(string(juuid), "step") > "6" {
+				return nil
+			}
 
 			if s.secondIPConn != nil {
 				for i := 0; i < s.Iterate; i++ {
