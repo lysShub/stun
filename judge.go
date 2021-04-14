@@ -35,7 +35,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	// 回复函数
 	var S = func(conn *net.UDPConn, raddr *net.UDPAddr, da []byte) error {
 		for i := 0; i < s.Iterate; i++ {
-			if _, err = conn.WriteToUDP(da[:18], raddr); err != nil {
+			if _, err = conn.WriteToUDP(da, raddr); err != nil {
 				return err
 			}
 		}
@@ -179,14 +179,14 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	/* 初始化完成 */
 
 	// 读取函数，收到对应的数据包返回nil
-	var R = func(shouleCode ...uint8) error {
+	var R = func(shouleCode ...uint8) ([]byte, error) {
 		var ch chan error = make(chan error)
 		var flag bool = true
 		var n int
+		da = make([]byte, 64)
 		go func() {
 			for flag {
 				n, err = conn.Read(da)
-				da = da[:n]
 				if err != nil {
 					ch <- err
 					return
@@ -203,10 +203,10 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		select {
 		case err := <-ch:
 			flag = false
-			return err
+			return da[:n], err
 		case <-time.After(s.TimeOut):
 			flag = false
-			return errors.New("timeout")
+			return nil, errors.New("timeout")
 		}
 	}
 	// 发送函数
@@ -228,7 +228,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	}
 
 	// 收 20
-	if err = R(20); err != nil {
+	if da, err = R(20); err != nil {
 		return distinguish(err)
 	}
 	if len(da) >= 22 {
@@ -244,7 +244,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	}
 
 	// 收  40,50 ,100,250,90,100,110
-	err = R(40, 50, 100, 250, 90, 100, 100)
+	da, err = R(40, 50, 100, 250, 90, 100, 100)
 	if err != nil {
 		return distinguish(err)
 
@@ -252,7 +252,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		return 250, nil
 	} else if da[17] == 40 || da[17] == 50 { // 区分端口限制锥形
 		if da[17] == 50 {
-			if err = R(40); err != nil {
+			if da, err = R(40); err != nil {
 				if strings.Contains(err.Error(), "timeout") {
 					S(conn, append(juuid, 220)) // 收到50，收不到40; 端口限制
 					return 220, nil
@@ -269,12 +269,12 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		}
 
 		// 收 第二IP的包70 或 80
-		err = R(0xc, 70, 80)
+		da, err = R(0xc, 70, 80)
 		if e.Errlog(err) {
 			return distinguish(err)
 
 		} else if da[17] == 80 {
-			if err = R(70); err != nil { //收到80，尝试接收70
+			if da, err = R(70); err != nil { //收到80，尝试接收70
 				if strings.Contains(err.Error(), "timeout") { //收不到70 IP限制锥形
 					S(conn, append(juuid, 200))
 					return 210, nil
@@ -287,7 +287,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		}
 	} else if da[17] == 90 || da[17] == 100 { // 区分具有防火墙的公网IP
 		if da[17] == 100 {
-			if err = R(90); err != nil {
+			if da, err = R(90); err != nil {
 				if strings.Contains(err.Error(), "time") { // 收不到90
 					// 具有防火墙的公网IP
 					S(conn, append(juuid, 190))
@@ -308,7 +308,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		S(ip2conn, append(juuid, 120))
 
 		// 接收回复 230 240
-		if err = R(230, 240); err != nil {
+		if da, err = R(230, 240); err != nil {
 			return distinguish(err)
 		} else {
 			return int(da[17]), nil
