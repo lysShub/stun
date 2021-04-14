@@ -27,10 +27,11 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
 		if v >= strconv.Itoa(int(int(step))) {
+			fmt.Println("拦截", v, juuid)
 			return nil // 记录已经存在 , 过滤
 		}
+		fmt.Println("放行", v, juuid)
 	}
-	fmt.Println("放行", da[17])
 
 	// 回复函数
 	var S = func(conn *net.UDPConn, raddr *net.UDPAddr, da []byte) error {
@@ -92,10 +93,10 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				if raddr.Port == int(da[18])<<8+int(da[19]) && Port1 == s.dbd.R(string(juuid), "c1") {
 					// 两次网关端口与使用端口相同，公网IP 100
 
-					s.dbd.U(string(juuid), "step", "100")
 					if err = S(conn, natAddr1, append(juuid, 100)); e.Errlog(err) {
 						return err
 					}
+					s.dbd.U(string(juuid), "step", "100")
 
 				} else { //对称NAT
 
