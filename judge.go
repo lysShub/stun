@@ -105,6 +105,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 							return
 						}
 						s.dbd.U(string(juuid), "step", "110")
+						fmt.Println("回复了110", append(juuid, 110))
 
 					} else { // 无序对称NAT
 						if err = S(conn, natAddr1, append(juuid, 250)); e.Errlog(err) {
