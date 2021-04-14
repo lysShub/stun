@@ -3,6 +3,7 @@ package stun
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			return nil // 记录已经存在 , 过滤
 		}
 	}
+	fmt.Println("放行", da[17])
 
 	// 回复函数
 	var S = func(conn *net.UDPConn, raddr *net.UDPAddr, da []byte) error {
@@ -226,9 +228,10 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	if err = R(20); err != nil {
 		return distinguish(err)
 	}
-	if len(da) > 22 {
+	if len(da) >= 22 {
 		wip2 = net.IPv4(da[18], da[19], da[20], da[21])
 	} else {
+		fmt.Println(len(da))
 		return -1, errors.New("step 20 : Data length less than 22")
 	}
 

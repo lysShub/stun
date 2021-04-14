@@ -82,7 +82,7 @@ func (s *STUN) ClientInit(Sever string) error {
 		s.s2 = s.SeverPort + 1
 	}
 
-	if s.Sever, err = domainToIP(s.Sever); err != nil {
+	if s.Sever, err = domainToIP(Sever); err != nil {
 		return err
 	}
 	return nil
@@ -181,7 +181,7 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
 	for i := 0; i < 3; i++ {
 		var tlnat int
-		if tlnat, err = s.judgeCliet(RandPort()); e.Errlog(err) {
+		if tlnat, err = s.judgeCliet(RandPort()); err != nil {
 			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "other") {
 				continue // 端口被占用
 			} else {
