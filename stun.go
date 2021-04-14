@@ -108,9 +108,9 @@ func (s *STUN) SeverInit(LIP1, LIP2, WIP2 net.IP) error {
 		s.s1 = s.SeverPort
 		s.s2 = s.SeverPort + 1
 	}
-	if s.LIP2.String() == "" {
-		return errors.New("Please set field IP2. ")
-	}
+
+	s.LIP1 = LIP1
+	s.LIP2 = LIP2
 	s.WIP2 = WIP2
 
 	s.dbd = new(mapdb.Db)
