@@ -146,19 +146,17 @@ func (s *STUN) RunSever() error {
 			if da[0] == 'J' {
 				cl.Lock()
 				s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
-
 				cl.Unlock()
 			}
 		}
 	}()
 	// 第一IP接收到的数据
 	for {
-
 		if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
 			continue
 		}
 
-		if da[0] == 'J' { //NAT判断
+		if da[0] == 'J' {
 			cl.Lock()
 			s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
 			e.Errlog(err)
