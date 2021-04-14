@@ -59,7 +59,7 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 func (s *STUN) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, error) {
 
 	var conn *net.UDPConn
-	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}); e.Errlog(err) {
+	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.IP(s.Sever), Port: s.s1}); e.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()

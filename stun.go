@@ -7,34 +7,44 @@ import (
 	"math/big"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lysShub/e"
 	"github.com/lysShub/mapdb"
 )
 
+//  无论客户端还是服务器都需要两个IP(IP1和IP2)。同一个VPS绑定两张网卡；这两张网卡的私网IP分别是a、b，公网IP分别是x，y。则在客户端IP1、IP2分别配置为x、y，在服务器IP1、IP2分别配置为a、b。
+
 type STUN struct {
-	// 服务器地址，IP或域名，仅client
-	Sever string
-	// 服务器端口
+	Iterate   int           // 同数据包重复发送次数，确保UDP可靠，默认5
+	MatchTime time.Duration // 匹配时长，默认30m
+	TimeOut   time.Duration // 超时时间，默认3s
+	ExtPorts  int           // 泛端口范围，默认7
+	// 服务器端口(同时也要使用SeverPort+1端口)，默认19986
+	//   如果设置，服务器和客户端要设置相同
 	SeverPort int
-	// 同数据包重复发送次数，确保UDP可靠，默认5
-	Iterate int
-	// 匹配时长，默认30m
-	MatchTime time.Duration
-	// 超时时间，默认3s
-	TimeOut time.Duration
-	// 泛端口范围，默认7
-	ExtPorts int
-	// 第二IP，可选，仅sever
-	SIP net.IP
+
+	/* 仅客户端配置 */
+
+	// 服务器地址、IP或域名，仅客户端需要设置
+	//  其对应的IP应该是服务器第一网卡的公网IP
+	Sever string
+
+	/* 仅服务器配置 */
+
+	// 服务器第二网卡的局域网IP，仅服务器需要设置
+	//  服务器都需要两个IP用于NAT类型判断，默认路由IP被省略。
+	LIP2 net.IP
+	// 服务器第二网卡的公网网IP，仅服务器需要设置
+	WIP2 net.IP
 
 	/* 私有 */
-	dbd          *mapdb.Db    // NAT类型判断的数据库
-	dbt          *mapdb.Db    // NAT穿隧数据库
-	secondIPConn *net.UDPConn // 第二IP的UDPconn
-	s1           int          // 服务器第一端口，与SeverPort相同
-	s2           int          // 服务器第二端口
+
+	dbd *mapdb.Db // NAT类型判断的数据库
+	dbt *mapdb.Db // NAT穿隧数据库
+	s1  int       // 服务器第一端口，与SeverPort相同
+	s2  int       // 服务器第二端口，与SeverPort+1相同
 }
 
 type R struct {
@@ -49,9 +59,7 @@ type R struct {
 var err error
 var errSever error = errors.New("Server no reply")
 
-// Init ic==true meaning initialize for client
-func (s *STUN) Init(ic bool) error {
-
+func (s *STUN) ClientInit(Sever string) error {
 	if s.Iterate == 0 {
 		s.Iterate = 5
 	}
@@ -65,48 +73,85 @@ func (s *STUN) Init(ic bool) error {
 		s.ExtPorts = 7
 	}
 	if s.SeverPort == 0 {
-		return errors.New("Please set field SeverPort. ")
+		s.s1 = 19986
+		s.s2 = 19987
 	} else {
 		s.s1 = s.SeverPort
 		s.s2 = s.SeverPort + 1
 	}
-	if ic { //client
-		if s.Sever == "" {
-			return errors.New("Please set field Sever. ")
-		} else {
-			if s.Sever, err = domainToIP(s.Sever); e.Errlog(err) { //可能是域名
-				return errors.New("invlid field Sever.")
-			}
-		}
-	} else { //sever
-		s.dbd = new(mapdb.Db)
-		s.dbd.Init()
-		s.dbt = new(mapdb.Db)
-		s.dbt.Init()
 
-		if s.SIP != nil {
-			if s.secondIPConn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.SIP, Port: s.SeverPort}); e.Errlog(err) {
-				return errors.New("invlid field SIP. ")
-			}
-		}
+	if s.Sever, err = domainToIP(s.Sever); err != nil {
+		return err
 	}
+	return nil
+}
+
+func (s *STUN) SeverInit(LIP2, WIP2 net.IP) error {
+	if s.Iterate == 0 {
+		s.Iterate = 5
+	}
+	if s.MatchTime == 0 {
+		s.MatchTime = time.Minute * 30
+	}
+	if s.TimeOut == 0 {
+		s.TimeOut = time.Second * 3
+	}
+	if s.ExtPorts == 0 {
+		s.ExtPorts = 7
+	}
+	if s.SeverPort == 0 {
+		s.s1 = 19986
+		s.s2 = 19987
+	} else {
+		s.s1 = s.SeverPort
+		s.s2 = s.SeverPort + 1
+	}
+	if s.LIP2.String() == "" {
+		return errors.New("Please set field IP2. ")
+	}
+	s.WIP2 = WIP2
+
+	s.dbd = new(mapdb.Db)
+	s.dbd.Init()
+	s.dbt = new(mapdb.Db)
+	s.dbt.Init()
 	return nil
 }
 
 func (s *STUN) RunSever() error {
 
-	var conn *net.UDPConn
+	var conn, conn2, ip2conn *net.UDPConn
 	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}); e.Errlog(err) {
 		return err
 	}
-	var conn2 *net.UDPConn
 	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s2}); e.Errlog(err) {
+		return err
+	}
+	if ip2conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP2, Port: s.s1}); e.Errlog(err) {
 		return err
 	}
 
 	var da []byte = make([]byte, 256)
 	var raddr *net.UDPAddr
 	var n int
+	var cl sync.RWMutex
+	// 第二IP接收到的数据
+	go func() {
+		for {
+			if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
+				continue
+			}
+			if da[0] == 'J' {
+				cl.Lock()
+				if err = s.judgeSever(conn, conn2, ip2conn, da[:n], raddr); e.Errlog(err) {
+					cl.Unlock()
+					continue
+				}
+				cl.Unlock()
+			}
+		}
+	}()
+	// 第一IP接收到的数据
 	for {
 
 		if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
@@ -114,9 +159,12 @@ func (s *STUN) RunSever() error {
 		}
 
 		if da[0] == 'J' { //NAT判断
-			if err = s.discoverSever(conn, conn2, da[:n], raddr); e.Errlog(err) {
+			cl.Lock()
+			if err = s.judgeSever(conn, conn2, ip2conn, da[:n], raddr); e.Errlog(err) {
+				cl.Unlock()
 				continue
 			}
+			cl.Unlock()
 
 		} else if da[0] == 'T' {
 			if err = s.throughSever(conn, da[:n], raddr); e.Errlog(err) {
@@ -131,7 +179,7 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
 	for i := 0; i < 3; i++ {
 		var tlnat int
-		if tlnat, err = s.discoverClient(RandPort()); e.Errlog(err) {
+		if tlnat, err = s.judgeCliet(RandPort()); e.Errlog(err) {
 			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "other") {
 				continue // 端口被占用
 			} else {
@@ -142,6 +190,7 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	}
 	lnat := selectMost(lnats)
 	fmt.Println("NAT类型:", lnat)
+	return R{}, nil
 
 	// 尝试穿隧
 	raddr, rnat, err := s.throughClient(append([]byte("T"), id[:]...), port, lnat)
@@ -151,21 +200,6 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	}
 
 	return R{Raddr: raddr, RNat: rnat, LNat: lnat}, nil
-}
-
-func domainToIP(sever string) (string, error) {
-	if r := net.ParseIP(sever); r == nil { //可能是域名
-		var ips []net.IP
-		if ips, err = net.LookupIP(sever); err != nil {
-			return "", err
-		}
-		for _, ip := range ips {
-			if ipv4 := ip.To4(); ipv4 != nil {
-				return ipv4.String(), nil
-			}
-		}
-	}
-	return sever, nil
 }
 
 func RandPort() int {
@@ -191,4 +225,19 @@ func selectMost(l []int) int {
 		}
 	}
 	return r
+}
+
+func domainToIP(sever string) (string, error) {
+	if r := net.ParseIP(sever); r == nil { //可能是域名
+		var ips []net.IP
+		if ips, err = net.LookupIP(sever); err != nil {
+			return "", err
+		}
+		for _, ip := range ips {
+			if ipv4 := ip.To4(); ipv4 != nil {
+				return ipv4.String(), nil
+			}
+		}
+	}
+	return sever, nil
 }

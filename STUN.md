@@ -74,28 +74,31 @@
 
 NAT类型判断流程。
 
-| 序号                        | 发送者    | 接收者    | 数据       | 说明                                                         |
-| --------------------------- | --------- | --------- | ---------- | ------------------------------------------------------------ |
-| <font color='red'>-1</font> | ---       | ---       | ---        | 发生错误                                                     |
-| <font color='red'>0</font>  | ---       | ---       | ---        | 服务器无回复，可能服务器宕机或无网络                         |
-| 1                           | client:c1 | sever:s1  | Juuid:1:c1 | 开始、c1占用2字节；sever应保存Juuid、网关端口，及使用端口    |
-| 2                           | sever:s1  | client:c1 | Juuid:2    | sever回复client，client接受到2后将执行3；没有接收到返回0     |
-| 3                           | client:c2 | sever:s1  | Juuid:3:c2 | client使用的第二端口请求sever, sever比较两次(流程1和3)请求的网关端口是否相等。相等需要进一步判断(锥形NAT；4、5)。不相等则有对称形NAT和公网IP两种情况；如果两次请求的网关端口分别和使用端口(c1、c2)相同可能为公网IP(9)，否则为对称NAT()。 |
-| 4                           | sever:s2  | client:c1 | Juuid:4    | sever使用第二端口进行回复，client不能收到则表示为端口限制形NAT(d)，否则为完全锥形或IP限制锥形NAT(6) |
-| 5                           | sever:s1  | client:c1 | Juuid:5    | 表示服务器执行了4                                            |
-| 6                           | client:c1 | sever:s1  | Juuid:6    | 客户端回复，为完全或IP限制锥形NAT，如须进一步区分、执行7,8；否则c |
-| 7                           | sever2:s1 | client:c1 | Juuid:7    | sever使用第二IP回复client，如果client能收到则a，否则b        |
-| 8                           | sever:s1  | client:c1 | Juuid:8    | 表示服务器执行了7                                            |
-| 9                           |           |           |            |                                                              |
-|                             |           |           |            |                                                              |
-|                             |           |           |            |                                                              |
-| <font color='red'>9</font>  | sever:s1  | client:c1 | Juuid:9    | 公网IP                                                       |
-| <font color='red'>a</font>  | client:c1 | sever:s1  | Juuid:a    | client收到7，完全锥形nat                                     |
-| <font color='red'>b</font>  | client:c1 | sever:s1  | Juuid:b    | client收到8且没有收到7，IP限制形nat                          |
-| <font color='red'>c</font>  | sever:s1  | client:c1 | Juuid:c    | 完全锥形或IP限制锥形NAT                                      |
-| <font color='red'>d</font>  | client:c1 | sever:s1  | Juuid:d    | client收到5但没有收到4，端口限制nat                          |
-| <font color='red'>e</font>  | sever:s1  | client:c1 | Juuid:f    | 顺序对称形NAT                                                |
-| <font color='red'>f</font>  | sever:s1  | client:c1 | Juuid:f    | 无序对称NAT                                                  |
+| 序号                         | 发送者    | 接收者    | 数据        | 说明                                                         |
+| ---------------------------- | --------- | --------- | ----------- | ------------------------------------------------------------ |
+| <font color='red'>-1</font>  | ---       | ---       | ---         | 发生错误                                                     |
+| <font color='red'>0</font>   | ---       | ---       | ---         | 服务器无回复，可能服务器宕机或无网络                         |
+| 10                           | client:C1 | sever:S1  | Juuid:1:C1  | 开始、C1占用2字节为client使用端口；sever应保存Juuid、网关端口，及使用端口 |
+| 20                           | sever:S1  | client:C1 | Juuid:2:ip2 | sever回复client，client接受到20后将执行30；没有接收到返回0。ip2是第二网卡的公网IP，占用4个字节 |
+| 30                           | client:C2 | sever:S1  | Juuid:30:C2 | client使用的第二端口请求sever, sever比较两次(流程10和30)请求的网关端口是否相等。相等需要进一步判断(锥形NAT；40、50)。不相等则有对称形NAT和公网IP两种情况；如果两次请求的网关端口分别和使用端口(C1、C2)相同可能为公网IP(90)，否则为对称NAT，如果两次请求的网关端口范围大于5则无序对称NAT(250)、否则顺序对称NAT(90)。 |
+| 40                           | sever:S2  | client:C1 | Juuid:40    | sever使用第二端口进行回复，client不能收到则表示为端口限制形NAT(220)，否则为完全锥形或IP限制锥形NAT(60) |
+| 50                           | sever:P1  | client:C1 | Juuid:500   | 表示服务器执行了40                                           |
+| 60                           | client:C1 | sever:S1  | Juuid:60    | 客户端收到40后的回复，为完全或IP限制锥形NAT；执行70、80      |
+| 70                           | sever2:S1 | client:C1 | Juuid:70    | sever使用第二IP回复client，如果client能收到则完全锥形(200)，否则IP限制锥形(210) |
+| 80                           | sever:S1  | client:C1 | Juuid:80    | 表示服务器执行了70                                           |
+| 90                           | sever2:S1 | client:C1 | Juuid:90    | sever使用第二IP回复client，如果client能收到此数据包，则公网IP(180)，否则具有防火墙的公网IP(190) |
+| 100                          | sever:S1  | client:C1 | Juuid:100   | 表示服务器执行了90（70、80过程和90、100过程相同）            |
+| 110                          | sever:S1  | client:C1 | Juuid:110   | 告知客户端执行120                                            |
+| 120                          | client:C1 | sever2:S1 | Juuid:120   | 服务器收到此数据包后判断和10的网关端口是否相连，相连则完全顺序对称NAT(230)，否则IP限制顺序对称NAT(240)。 |
+|                              |           |           |             |                                                              |
+| <font color='red'>180</font> | client:C1 | sever:S1  | Juuid:180   | 公网IP                                                       |
+| <font color='red'>190</font> | client:C1 | sever:S1  | Juuid:190   | 具有防火墙的公网IP                                           |
+| <font color='red'>200</font> | client:C1 | sever:S1  | Juuid:200   | 完全锥形nat                                                  |
+| <font color='red'>210</font> | client:C1 | sever:S1  | Juuid:210   | IP限制形nat                                                  |
+| <font color='red'>220</font> | client:C1 | sever:S1  | Juuid:220   | 端口限制nat                                                  |
+| <font color='red'>230</font> | sever:S1  | client:C1 | Juuid:230   | 完全顺序对称NAT                                              |
+| <font color='red'>240</font> | sever:S1  | client:C1 | Juuid:240   | IP限制顺序对称NAT                                            |
+| <font color='red'>250</font> | sever:S1  | client:C1 | Juuid:250   | 无序对称NAT                                                  |
 
 
 
