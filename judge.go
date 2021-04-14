@@ -26,7 +26,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	// 处理step
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
-		if v >= strconv.Itoa(int(int(step))) {
+		if v >= strconv.Itoa(int(step)) {
 			fmt.Println("拦截", v, step)
 			return // 记录已经存在 , 过滤
 		}
@@ -49,7 +49,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			return
 		}
 		var D map[string]string = make(map[string]string)
-		D["step"] = "020"                                    // 序号20，写为020方便进行字符串比较
+		D["step"] = "20"                                     // 序号20
 		D["IP1"] = raddr.IP.String()                         // 第一NAT网关IP
 		D["Port1"] = strconv.Itoa(raddr.Port)                // 第一NAT网关端口
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
@@ -86,7 +86,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				if err = S(conn, natAddr1, append(juuid, 50)); e.Errlog(err) { //5
 					return
 				}
-				s.dbd.U(string(juuid), "step", "050")
+				s.dbd.U(string(juuid), "step", "50")
 
 			} else { // 两次请求端口不同
 
@@ -127,7 +127,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if err = S(conn, raddr, append(juuid, 80)); e.Errlog(err) {
 				return
 			}
-			s.dbd.U(string(juuid), "step", "080")
+			s.dbd.U(string(juuid), "step", "80")
 
 		} else if step == 120 { // 第二IP收到的
 			if raddr.Port-natAddr1.Port < 10 { //完全顺序对称NAT
