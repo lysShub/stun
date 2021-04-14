@@ -15,10 +15,10 @@ import (
 
 // DiscoverSever
 // 参数为第一端口和第二端口，接收到的数据，对方的地址
-func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
+func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
 
 	if len(da) < 18 {
-		return nil
+		return
 	}
 	step := int(da[17])
 	juuid := da[:17]
@@ -28,7 +28,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	if v != "" {
 		if v >= strconv.Itoa(int(int(step))) {
 			fmt.Println("拦截", v, step)
-			return nil // 记录已经存在 , 过滤
+			return // 记录已经存在 , 过滤
 		}
 		fmt.Println("放行", v, step)
 	}
@@ -40,53 +40,53 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				return err
 			}
 		}
-		return nil
+		return err
 	}
 
 	/* 开始 */
 	if step == 10 {
 		if len(da) != 20 {
-			return nil
+			return
 		}
 		var D map[string]string = make(map[string]string)
-		D["step"] = "20"
+		D["step"] = "020"                                    // 序号20，写为020方便进行字符串比较
 		D["IP1"] = raddr.IP.String()                         // 第一NAT网关IP
 		D["Port1"] = strconv.Itoa(raddr.Port)                // 第一NAT网关端口
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbd.Ut(string(juuid), D)
 
 		if err = S(conn, raddr, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15])); e.Errlog(err) {
-			return err
+			return
 		}
 		fmt.Println("回复了20", append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]))
 	} else {
 
 		var IP1, Port1 string
 		if Port1 = s.dbd.R(string(juuid), "Port1"); Port1 == "" {
-			return nil
+			return
 		}
 		if IP1 = s.dbd.R(string(juuid), "IP1"); IP1 == "" {
-			return nil
+			return
 		}
 		var natAddr1 *net.UDPAddr // 第一次请求的网关地址
 		if natAddr1, err = net.ResolveUDPAddr("udp", string(IP1)+":"+string(Port1)); e.Errlog(err) {
-			return err
+			return
 		}
 
 		if step == 30 { //30
 
 			if len(da) != 20 {
-				return nil
+				return
 			}
 
 			if strconv.Itoa(raddr.Port) == string(Port1) { //两次请求端口相同、锥形NAT，需进一步判断 回复40和50
 				if err = S(conn2, natAddr1, append(juuid, 40)); e.Errlog(err) { //4
-					return err
+					return
 				}
 				if err = S(conn, natAddr1, append(juuid, 50)); e.Errlog(err) { //5
-					return err
+					return
 				}
-				s.dbd.U(string(juuid), "step", "50")
+				s.dbd.U(string(juuid), "step", "050")
 
 			} else { // 两次请求端口不同
 
@@ -94,7 +94,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 					// 两次网关端口与使用端口相同，公网IP 100
 
 					if err = S(conn, natAddr1, append(juuid, 100)); e.Errlog(err) {
-						return err
+						return
 					}
 					s.dbd.U(string(juuid), "step", "100")
 
@@ -102,13 +102,13 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 					if raddr.Port-natAddr1.Port <= 5 { // 相连，为顺序NAT
 						if err = S(conn, natAddr1, append(juuid, 110)); e.Errlog(err) {
-							return err
+							return
 						}
 						s.dbd.U(string(juuid), "step", "110")
 
 					} else { // 无序对称NAT
 						if err = S(conn, natAddr1, append(juuid, 250)); e.Errlog(err) {
-							return err
+							return
 						}
 						s.dbd.U(string(juuid), "step", "250")
 					}
@@ -118,16 +118,16 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 		} else if step == 60 {
 			if len(da) != 18 {
-				return nil
+				return
 			}
 
 			if err = S(ip2conn, raddr, append(juuid, 70)); e.Errlog(err) {
-				return nil
+				return
 			}
 			if err = S(conn, raddr, append(juuid, 80)); e.Errlog(err) {
-				return nil
+				return
 			}
-			s.dbd.U(string(juuid), "step", "80")
+			s.dbd.U(string(juuid), "step", "080")
 
 		} else if step == 120 { // 第二IP收到的
 			if raddr.Port-natAddr1.Port < 10 { //完全顺序对称NAT
@@ -143,7 +143,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			s.dbd.U(string(juuid), "step", strconv.Itoa(int(step)))
 		}
 	}
-	return nil
+	return
 }
 
 // DiscoverClient
@@ -223,8 +223,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	/* 开始 */
 
 	// 发 10
-	da = append(da, 10, uint8(c1>>8), uint8(c1))
-	if err = S(conn, da); e.Errlog(err) {
+	if err = S(conn, append(da, 10, uint8(c1>>8), uint8(c1))); e.Errlog(err) {
 		return -1, err
 	}
 
