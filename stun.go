@@ -145,10 +145,8 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				if err = s.judgeSever(conn, conn2, ip2conn, da[:n], raddr); e.Errlog(err) {
-					cl.Unlock()
-					continue
-				}
+				s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
+
 				cl.Unlock()
 			}
 		}
@@ -162,10 +160,8 @@ func (s *STUN) RunSever() error {
 
 		if da[0] == 'J' { //NAT判断
 			cl.Lock()
-			if err = s.judgeSever(conn, conn2, ip2conn, da[:n], raddr); e.Errlog(err) {
-				cl.Unlock()
-				continue
-			}
+			s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
+			e.Errlog(err)
 			cl.Unlock()
 
 		} else if da[0] == 'T' {
