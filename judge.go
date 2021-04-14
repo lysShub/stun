@@ -27,10 +27,10 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
 		if v >= strconv.Itoa(int(int(step))) {
-			fmt.Println("拦截", v, juuid)
+			fmt.Println("拦截", v, step)
 			return nil // 记录已经存在 , 过滤
 		}
-		fmt.Println("放行", v, juuid)
+		fmt.Println("放行", v, step)
 	}
 
 	// 回复函数
