@@ -145,6 +145,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
+				fmt.Println("sever2接收到数据")
 				s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
