@@ -55,6 +55,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		s.dbd.Ut(string(juuid), D)
 
 		if err = S(conn, raddr, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15])); e.Errlog(err) {
+			fmt.Println("回复了20", append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]))
 			return err
 		}
 	} else {
@@ -181,9 +182,11 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	var R = func(shouleCode ...uint8) error {
 		var ch chan error = make(chan error)
 		var flag bool = true
+		var n int
 		go func() {
 			for flag {
-				_, err = conn.Read(da)
+				n, err = conn.Read(da)
+				da = da[:n]
 				if err != nil {
 					ch <- err
 					return
@@ -232,6 +235,8 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		wip2 = net.IPv4(da[18], da[19], da[20], da[21])
 	} else {
 		fmt.Println(len(da))
+		fmt.Println(juuid)
+		fmt.Println(da)
 		return -1, errors.New("step 20 : Data length less than 22")
 	}
 
