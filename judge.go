@@ -21,7 +21,9 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		return
 	}
 	step := int(da[17])
-	juuid := da[:17]
+	var juuid = make([]byte, 17)
+	// juuid := da[:17]
+	copy(juuid, da)
 
 	// 处理step
 	v := s.dbd.R(string(juuid), "step")
@@ -131,6 +133,8 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			s.dbd.U(string(juuid), "step", "80")
 
 		} else if step == 120 { // 第二IP收到的
+			fmt.Println("收到了120")
+
 			if raddr.Port-natAddr1.Port < 10 { //完全顺序对称NAT
 				s.dbd.U(string(juuid), "step", "230")
 				S(conn, raddr, append(juuid, 230))
@@ -167,13 +171,14 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
+	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}
 
-	conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1})
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: c1})
 	if e.Errlog(err) {
 		return -1, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1})
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, raddr1)
 	if e.Errlog(err) {
 		return -1, err
 	}
@@ -189,6 +194,9 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		go func() {
 			for flag {
 				n, err = conn.Read(da)
+				if err == nil {
+					fmt.Println("step", da[17])
+				}
 				if err != nil {
 					ch <- err
 					return
@@ -212,10 +220,16 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		}
 	}
 	// 发送函数
-	var S = func(conn *net.UDPConn, d []byte) error {
+	var S = func(conn *net.UDPConn, d []byte, raddr *net.UDPAddr) error {
 		for i := 0; i < s.Iterate; i++ {
-			if _, err := conn.Write(d); err != nil {
-				return err
+			if raddr != nil {
+				if _, err := conn.WriteToUDP(d, raddr); err != nil {
+					return err
+				}
+			} else {
+				if _, err := conn.Write(d); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -224,7 +238,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	/* 开始 */
 
 	// 发 10
-	if err = S(conn, append(da, 10, uint8(c1>>8), uint8(c1))); e.Errlog(err) {
+	if err = S(conn, append(da, 10, uint8(c1>>8), uint8(c1)), raddr1); e.Errlog(err) {
 		return -1, err
 	}
 
@@ -240,22 +254,21 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	}
 
 	// 第二端口发 30
-	if err = S(conn2, append(juuid, 30, uint8(c2>>8), uint8(c2))); e.Errlog(err) {
+	if err = S(conn2, append(juuid, 30, uint8(c2>>8), uint8(c2)), nil); e.Errlog(err) {
 		return -1, err
 	}
 
 	// 收  40,50 ,100,250,90,100,110
-	da, err = R(40, 50, 100, 250, 90, 100, 100)
+	da, err = R(40, 50, 100, 250, 90, 100, 110)
 	if err != nil {
 		return distinguish(err)
-
 	} else if da[17] == 250 { //无序对称NAT
 		return 250, nil
 	} else if da[17] == 40 || da[17] == 50 { // 区分端口限制锥形
 		if da[17] == 50 {
 			if da, err = R(40); err != nil {
 				if strings.Contains(err.Error(), "timeout") {
-					S(conn, append(juuid, 220)) // 收到50，收不到40; 端口限制
+					S(conn, append(juuid, 220), raddr1) // 收到50，收不到40; 端口限制
 					return 220, nil
 				}
 				e.Errlog(err)
@@ -265,7 +278,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		// 至此，起码已经收到40；为完全锥形或IP限制锥形
 
 		// 发60
-		if err = S(conn, append(juuid, 60)); e.Errlog(err) {
+		if err = S(conn, append(juuid, 60), raddr1); e.Errlog(err) {
 			return 0, err
 		}
 
@@ -277,13 +290,13 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		} else if da[17] == 80 {
 			if da, err = R(70); err != nil { //收到80，尝试接收70
 				if strings.Contains(err.Error(), "timeout") { //收不到70 IP限制锥形
-					S(conn, append(juuid, 200))
+					S(conn, append(juuid, 200), raddr1)
 					return 210, nil
 				}
 			}
 
 			// 至此，已经接收到7 完全锥形NAT
-			S(conn, append(juuid, 200))
+			S(conn, append(juuid, 200), raddr1)
 			return 200, nil
 		}
 	} else if da[17] == 90 || da[17] == 100 { // 区分具有防火墙的公网IP
@@ -291,22 +304,20 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 			if da, err = R(90); err != nil {
 				if strings.Contains(err.Error(), "time") { // 收不到90
 					// 具有防火墙的公网IP
-					S(conn, append(juuid, 190))
+					S(conn, append(juuid, 190), raddr1)
 					return 190, nil
 				}
 				return -1, err
 			}
 			// 至此，至少已经收到了90 公网IP
-			S(conn, append(juuid, 180))
+			S(conn, append(juuid, 180), raddr1)
 			return 180, nil
 		}
 	} else if da[17] == 110 { // 请求sever2
-		ip2conn, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c1}, &net.UDPAddr{IP: wip2, Port: s.s1})
-		if e.Errlog(err) {
-			return -1, err
-		}
-		defer ip2conn.Close()
-		S(ip2conn, append(juuid, 120))
+		fmt.Println("收到110")
+
+		// 第二IP
+		S(conn, append(juuid, 120), &net.UDPAddr{IP: wip2, Port: s.s1})
 
 		// 接收回复 230 240
 		if da, err = R(230, 240); err != nil {
