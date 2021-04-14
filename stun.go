@@ -33,8 +33,10 @@ type STUN struct {
 
 	/* 仅服务器配置 */
 
+	// 服务器第一网卡的局域网IP，仅服务器需要设置
+	//  此网卡的公网IP与客户端设置的Sever应相同
+	LIP1 net.IP
 	// 服务器第二网卡的局域网IP，仅服务器需要设置
-	//  服务器都需要两个IP用于NAT类型判断，默认路由IP被省略。
 	LIP2 net.IP
 	// 服务器第二网卡的公网网IP，仅服务器需要设置
 	WIP2 net.IP
@@ -86,7 +88,7 @@ func (s *STUN) ClientInit(Sever string) error {
 	return nil
 }
 
-func (s *STUN) SeverInit(LIP2, WIP2 net.IP) error {
+func (s *STUN) SeverInit(LIP1, LIP2, WIP2 net.IP) error {
 	if s.Iterate == 0 {
 		s.Iterate = 5
 	}
@@ -121,10 +123,10 @@ func (s *STUN) SeverInit(LIP2, WIP2 net.IP) error {
 func (s *STUN) RunSever() error {
 
 	var conn, conn2, ip2conn *net.UDPConn
-	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s1}); e.Errlog(err) {
+	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s1}); e.Errlog(err) {
 		return err
 	}
-	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.s2}); e.Errlog(err) {
+	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s2}); e.Errlog(err) {
 		return err
 	}
 	if ip2conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP2, Port: s.s1}); e.Errlog(err) {
