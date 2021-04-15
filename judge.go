@@ -133,7 +133,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			s.dbd.U(string(juuid), "step", "80")
 
 		} else if step == 120 { // 第二IP收到的
-			fmt.Println("收到了120")
+			fmt.Println("收到了120", raddr.Port, natAddr1.Port)
 
 			if raddr.Port-natAddr1.Port < 10 { //完全顺序对称NAT
 				fmt.Println("发送了230")
@@ -142,8 +142,9 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 			} else { //IP限制顺序对称NAT
 				fmt.Println("发送了240")
-				s.dbd.U(string(juuid), "step", "240")
 				S(conn, raddr, append(juuid, 240))
+				s.dbd.U(string(juuid), "step", "240")
+
 			}
 
 		} else if step == 180 || step == 190 || step == 200 || step == 210 || step == 220 {
