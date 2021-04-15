@@ -140,7 +140,7 @@ func (s *STUN) RunSever() error {
 	// 第二IP接收到的数据
 	go func() {
 		for {
-			if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
+			if n, raddr, err = ip2conn.ReadFromUDP(da); e.Errlog(err) {
 				continue
 			}
 			if da[0] == 'J' {
