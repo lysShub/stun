@@ -148,6 +148,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				S(conn, raddr, append(juuid, 240))
 				s.dbd.U(string(juuid), "step", "240")
 				fmt.Println("240发送数据", append(juuid, 240))
+				fmt.Println("第一次请求地址", natAddr1.String())
 				fmt.Println("240发送地址", conn.LocalAddr(), raddr.String())
 			}
 
