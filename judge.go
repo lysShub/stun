@@ -136,10 +136,12 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			fmt.Println("收到了120")
 
 			if raddr.Port-natAddr1.Port < 10 { //完全顺序对称NAT
-				s.dbd.U(string(juuid), "step", "230")
+				fmt.Println("发送了230")
 				S(conn, raddr, append(juuid, 230))
+				s.dbd.U(string(juuid), "step", "230")
 
 			} else { //IP限制顺序对称NAT
+				fmt.Println("发送了240")
 				s.dbd.U(string(juuid), "step", "240")
 				S(conn, raddr, append(juuid, 240))
 			}
