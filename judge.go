@@ -50,6 +50,8 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		if len(da) != 20 {
 			return
 		}
+		fmt.Println("10的网关地址", raddr.String())
+
 		var D map[string]string = make(map[string]string)
 		D["step"] = "20"                                     // 序号20
 		D["IP1"] = raddr.IP.String()                         // 第一NAT网关IP
@@ -80,6 +82,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if len(da) != 20 {
 				return
 			}
+			fmt.Println("30的网关地址", raddr.String())
 
 			if strconv.Itoa(raddr.Port) == string(Port1) { //两次请求端口相同、锥形NAT，需进一步判断 回复40和50
 				if err = S(conn2, natAddr1, append(juuid, 40)); e.Errlog(err) { //4
@@ -123,6 +126,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if len(da) != 18 {
 				return
 			}
+			fmt.Println("60的网关地址", raddr.String())
 
 			if err = S(ip2conn, raddr, append(juuid, 70)); e.Errlog(err) {
 				return
@@ -133,7 +137,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			s.dbd.U(string(juuid), "step", "80")
 
 		} else if step == 120 { // 第二IP收到的
-			fmt.Println("收到了120", raddr.Port, natAddr1.Port)
+			fmt.Println("120的网关地址", raddr.String())
 
 			var bias int = raddr.Port - natAddr1.Port
 			if (bias < 10 && bias > 0) || (bias > -10 && bias < 0) { //完全顺序对称NAT
