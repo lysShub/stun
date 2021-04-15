@@ -149,7 +149,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			} else { //IP限制顺序对称NAT
 				fmt.Println("发送了240")
 
-				S(ip2conn, raddr, append(juuid, 240))
+				S(conn, natAddr1, append(juuid, 240))
 				s.dbd.U(string(juuid), "step", "240")
 				fmt.Println("240发送数据", append(juuid, 240))
 				fmt.Println("第一次请求地址", natAddr1.String())
