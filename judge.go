@@ -139,21 +139,29 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		} else if step == 120 { // 第二IP收到的
 			fmt.Println("120的网关地址", raddr.String())
 
-			var bias int = raddr.Port - natAddr1.Port
-			if (bias < 10 && bias > 0) || (bias > -10 && bias < 0) { //完全顺序对称NAT
+			if !net.IP.Equal(raddr.IP, natAddr1.IP) { // IP 不相同 无序对称NAT
+				// IP 不相同 250
+				fmt.Println("IP 不相同；发送了250")
+				S(conn, natAddr1, append(juuid, 250))
+				s.dbd.U(string(juuid), "step", "250")
 
-				fmt.Println("发送了230")
-				S(conn, raddr, append(juuid, 230))
-				s.dbd.U(string(juuid), "step", "230")
+			} else {
+				var bias int = raddr.Port - natAddr1.Port
+				if (bias < 10 && bias > 0) || (bias > -10 && bias < 0) { //完全顺序对称NAT
 
-			} else { //IP限制顺序对称NAT
-				fmt.Println("发送了240")
+					fmt.Println("发送了230")
+					S(conn, natAddr1, append(juuid, 230))
+					s.dbd.U(string(juuid), "step", "230")
 
-				S(conn, natAddr1, append(juuid, 240))
-				s.dbd.U(string(juuid), "step", "240")
-				fmt.Println("240发送数据", append(juuid, 240))
-				fmt.Println("第一次请求地址", natAddr1.String())
-				fmt.Println("240发送地址", conn.LocalAddr(), raddr.String())
+				} else { //IP限制顺序对称NAT
+					fmt.Println("发送了240")
+
+					S(conn, natAddr1, append(juuid, 240))
+					s.dbd.U(string(juuid), "step", "240")
+					fmt.Println("240发送数据", append(juuid, 240))
+					fmt.Println("第一次请求地址", natAddr1.String())
+					fmt.Println("240发送地址", conn.LocalAddr(), raddr.String())
+				}
 			}
 
 		} else if step == 180 || step == 190 || step == 200 || step == 210 || step == 220 {
