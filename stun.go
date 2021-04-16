@@ -43,7 +43,7 @@ type STUN struct {
 
 	/* 私有 */
 
-	dbd *mapdb.Db // NAT类型判断的数据库
+	dbj *mapdb.Db // NAT类型判断的数据库
 	dbt *mapdb.Db // NAT穿隧数据库
 	s1  int       // 服务器第一端口，与SeverPort相同
 	s2  int       // 服务器第二端口，与SeverPort+1相同
@@ -113,8 +113,8 @@ func (s *STUN) SeverInit(LIP1, LIP2, WIP2 net.IP) error {
 	s.LIP2 = LIP2
 	s.WIP2 = WIP2
 
-	s.dbd = new(mapdb.Db)
-	s.dbd.Init()
+	s.dbj = new(mapdb.Db)
+	s.dbj.Init()
 	s.dbt = new(mapdb.Db)
 	s.dbt.Init()
 	return nil
