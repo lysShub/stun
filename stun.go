@@ -174,7 +174,7 @@ func (s *STUN) RunSever() error {
 // RunClient id双方要相同
 func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		var tlnat int
 		if tlnat, err = s.judgeCliet(RandPort()); err != nil {
 			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "other") {

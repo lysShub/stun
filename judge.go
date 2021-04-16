@@ -61,13 +61,17 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			return
 		}
 
+		s.dbj.U(string(juuid), "IP2", raddr.IP.String())
+		s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
+		s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))
+
 		if step == 30 {
 
 			if len(da) != 20 {
 				return
 			}
 
-			if strconv.Itoa(raddr.Port) == string(Port1) { // 锥形NAT
+			if strconv.Itoa(raddr.Port) == string(Port1) {
 				if err = s.Send(conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
 					return
 				}
@@ -116,12 +120,12 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			}
 			s.dbj.U(string(juuid), "step", "80")
 
-		} else if step == 120 {
+		} else if step == 120 { // 第二IP
+			if len(da) != 18 {
+				return
+			}
 
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
-
-				e.Errlog(errors.New(fmt.Sprintln(s.dbj.M)))
-				e.Errlog(errors.New("请求第二IP" + raddr.IP.String() + "  " + strconv.Itoa(raddr.Port)))
 
 				s.Send(conn, append(juuid, 250), natAddr1)
 				s.dbj.U(string(juuid), "step", "250")
