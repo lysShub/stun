@@ -92,7 +92,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 				} else {
 
-					if raddr.Port-natAddr1.Port <= 5 {
+					if raddr.Port-natAddr1.Port <= 5 && 0 < raddr.Port-natAddr1.Port {
 						if err = s.Send(conn, append(juuid, 110), natAddr1); e.Errlog(err) {
 							return
 						}
@@ -175,6 +175,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
 	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}
+	// var raddr2 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s2}
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: c1})
 	if e.Errlog(err) {
@@ -222,21 +223,6 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 			return nil, errors.New("timeout")
 		}
 	}
-	// 发送函数
-	// var S = func(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
-	// 	for i := 0; i < s.Iterate; i++ {
-	// 		if raddr != nil {
-	// 			if _, err := conn.WriteToUDP(da, raddr); err != nil {
-	// 				return err
-	// 			}
-	// 		} else {
-	// 			if _, err := conn.Write(da); err != nil {
-	// 				return err
-	// 			}
-	// 		}
-	// 	}
-	// 	return nil
-	// }
 
 	/* 开始 */
 
