@@ -340,7 +340,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		S(conn, append(juuid, 120), &net.UDPAddr{IP: wip2, Port: s.s1})
 
 		// 接收回复 230 240
-		if da, err = R(230, 240); err != nil {
+		if da, err = R(230, 240, 250); err != nil {
 			return distinguish(err)
 		} else {
 			return int(da[17]), nil
