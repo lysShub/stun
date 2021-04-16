@@ -22,27 +22,30 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 	}
 	step := int(da[17])
 	var juuid = make([]byte, 17)
-	// juuid := da[:17]
 	copy(juuid, da)
 
 	// 处理step
 	v := s.dbd.R(string(juuid), "step")
 	if v != "" {
 		if len(v) > len(strconv.Itoa(int(step))) || v >= strconv.Itoa(int(step)) {
-			fmt.Println("拦截", v, step)
 			return // 记录已经存在 , 过滤
 		}
-		fmt.Println("放行", v, step)
 	}
 
 	// 回复函数
-	var S = func(conn *net.UDPConn, raddr *net.UDPAddr, da []byte) error {
+	var S = func(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 		for i := 0; i < s.Iterate; i++ {
-			if _, err = conn.WriteToUDP(da, raddr); err != nil {
-				return err
+			if raddr != nil {
+				if _, err := conn.WriteToUDP(da, raddr); err != nil {
+					return err
+				}
+			} else {
+				if _, err := conn.Write(da); err != nil {
+					return err
+				}
 			}
 		}
-		return err
+		return nil
 	}
 
 	/* 开始 */
@@ -59,7 +62,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbd.Ut(string(juuid), D)
 
-		if err = S(conn, raddr, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15])); e.Errlog(err) {
+		if err = S(conn, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]), raddr); e.Errlog(err) {
 			return
 		}
 		fmt.Println("回复了20", append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]))
@@ -85,10 +88,10 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			fmt.Println("30的网关地址", raddr.String())
 
 			if strconv.Itoa(raddr.Port) == string(Port1) { //两次请求端口相同、锥形NAT，需进一步判断 回复40和50
-				if err = S(conn2, natAddr1, append(juuid, 40)); e.Errlog(err) { //4
+				if err = S(conn2, append(juuid, 40), natAddr1); e.Errlog(err) { //4
 					return
 				}
-				if err = S(conn, natAddr1, append(juuid, 50)); e.Errlog(err) { //5
+				if err = S(conn, append(juuid, 50), natAddr1); e.Errlog(err) { //5
 					return
 				}
 				s.dbd.U(string(juuid), "step", "50")
@@ -98,7 +101,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				if raddr.Port == int(da[18])<<8+int(da[19]) && Port1 == s.dbd.R(string(juuid), "c1") {
 					// 两次网关端口与使用端口相同，公网IP 100
 
-					if err = S(conn, natAddr1, append(juuid, 100)); e.Errlog(err) {
+					if err = S(conn, append(juuid, 100), natAddr1); e.Errlog(err) {
 						return
 					}
 					s.dbd.U(string(juuid), "step", "100")
@@ -106,14 +109,14 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				} else { //对称NAT
 
 					if raddr.Port-natAddr1.Port <= 5 { // 相连，为顺序NAT
-						if err = S(conn, natAddr1, append(juuid, 110)); e.Errlog(err) {
+						if err = S(conn, append(juuid, 110), natAddr1); e.Errlog(err) {
 							return
 						}
 						s.dbd.U(string(juuid), "step", "110")
 						fmt.Println("回复了110", append(juuid, 110))
 
 					} else { // 无序对称NAT
-						if err = S(conn, natAddr1, append(juuid, 250)); e.Errlog(err) {
+						if err = S(conn, append(juuid, 250), natAddr1); e.Errlog(err) {
 							return
 						}
 						s.dbd.U(string(juuid), "step", "250")
@@ -128,10 +131,10 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			}
 			fmt.Println("60的网关地址", raddr.String())
 
-			if err = S(ip2conn, raddr, append(juuid, 70)); e.Errlog(err) {
+			if err = S(ip2conn, append(juuid, 70), raddr); e.Errlog(err) {
 				return
 			}
-			if err = S(conn, raddr, append(juuid, 80)); e.Errlog(err) {
+			if err = S(conn, append(juuid, 80), raddr); e.Errlog(err) {
 				return
 			}
 			s.dbd.U(string(juuid), "step", "80")
@@ -142,7 +145,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) { // IP 不相同 无序对称NAT
 				// IP 不相同 250
 				fmt.Println("IP 不相同；发送了250")
-				S(conn, natAddr1, append(juuid, 250))
+				S(conn, append(juuid, 250), natAddr1)
 				s.dbd.U(string(juuid), "step", "250")
 
 			} else {
@@ -150,13 +153,13 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 				if (bias < 10 && bias > 0) || (bias > -10 && bias < 0) { //完全顺序对称NAT
 
 					fmt.Println("发送了230")
-					S(conn, natAddr1, append(juuid, 230))
+					S(conn, append(juuid, 230), natAddr1)
 					s.dbd.U(string(juuid), "step", "230")
 
 				} else { //IP限制顺序对称NAT
 					fmt.Println("发送了240")
 
-					S(conn, natAddr1, append(juuid, 240))
+					S(conn, append(juuid, 240), natAddr1)
 					s.dbd.U(string(juuid), "step", "240")
 					fmt.Println("240发送数据", append(juuid, 240))
 					fmt.Println("第一次请求地址", natAddr1.String())
@@ -240,14 +243,14 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 		}
 	}
 	// 发送函数
-	var S = func(conn *net.UDPConn, d []byte, raddr *net.UDPAddr) error {
+	var S = func(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 		for i := 0; i < s.Iterate; i++ {
 			if raddr != nil {
-				if _, err := conn.WriteToUDP(d, raddr); err != nil {
+				if _, err := conn.WriteToUDP(da, raddr); err != nil {
 					return err
 				}
 			} else {
-				if _, err := conn.Write(d); err != nil {
+				if _, err := conn.Write(da); err != nil {
 					return err
 				}
 			}

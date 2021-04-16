@@ -32,43 +32,7 @@
 
 ### NAT类型判断
 
-​		NAT类型判断流程。
 
-| 序号                        | 发送者    | 接收者    | 数据       | 说明                                                         |
-| --------------------------- | --------- | --------- | ---------- | ------------------------------------------------------------ |
-| <font color='red'>-1</font> | ---       | ---       | ---        | 发生错误                                                     |
-| <font color='red'>0</font>  | ---       | ---       | ---        | 服务器无回复，可能服务器宕机或无网络                         |
-| 1                           | client:c1 | sever:s1  | Juuid:1:c1 | 开始、c1占用2字节；sever应保存Juuid、网关端口，及使用端口    |
-| 2                           | sever:s1  | client:c1 | Juuid:2    | sever回复client，client接受到2后将执行3；没有接收到返回0     |
-| 3                           | client:c2 | sever:s1  | Juuid:3:c2 | client使用的第二端口请求sever, sever比较两次(流程1和3)请求的网关端口是否相等。相等需要进一步判断(锥形NAT；4、5)。不相等则有对称形NAT和公网IP两种情况；如果两次请求的网关端口分别和使用端口(c1、c2)相同为公网IP(9)，否则为对称NAT；如果两次网关端口相邻则为顺序对称NAT(e)，否则为无序对称NAT(f)。有一定的误判率。 |
-| 4                           | sever:s2  | client:c1 | Juuid:4    | sever使用第二端口进行回复，client不能收到则表示为端口限制形NAT(d)，否则为完全锥形或IP限制锥形NAT(6) |
-| 5                           | sever:s1  | client:c1 | Juuid:5    | 表示服务器执行了4                                            |
-| 6                           | client:c1 | sever:s1  | Juuid:6    | 客户端回复，为完全或IP限制锥形NAT，如须进一步区分、执行7,8；否则c |
-| 7                           | sever2:s1 | client:c1 | Juuid:7    | sever使用第二IP回复client，如果client能收到则a，否则b        |
-| 8                           | sever:s1  | client:c1 | Juuid:8    | 表示服务器执行了7                                            |
-| <font color='red'>9</font>  | sever:s1  | client:c1 | Juuid:9    | 公网IP                                                       |
-| <font color='red'>a</font>  | client:c1 | sever:s1  | Juuid:a    | client收到7，完全锥形nat                                     |
-| <font color='red'>b</font>  | client:c1 | sever:s1  | Juuid:b    | client收到8且没有收到7，IP限制形nat                          |
-| <font color='red'>c</font>  | sever:s1  | client:c1 | Juuid:c    | 完全锥形或IP限制锥形NAT                                      |
-| <font color='red'>d</font>  | client:c1 | sever:s1  | Juuid:d    | client收到5但没有收到4，端口限制nat                          |
-| <font color='red'>e</font>  | sever:s1  | client:c1 | Juuid:f    | 顺序对称形NAT                                                |
-| <font color='red'>f</font>  | sever:s1  | client:c1 | Juuid:f    | 无序对称NAT                                                  |
-
-
-
-说明：
-
-- s1,s2是服务器的第一第二使用端口，c1,c2是客户端的第一第二使用端口。要求1和2是相连端口(1小)，但不要求s和c相同。
-
-- 红色代码表示可能返回值，表中以16进制表示。
-
-- 由于区分完全锥形和IP限制锥形需要不同的IP，稍有麻烦，这里是否将其加以区分的权力开放。在实际程序是使用第二网卡实现的、只需提供第二网卡的IP即可。
-
-- 5和8的作用类似TCP中的ACK，当client接收到它们后，如果在之后无法接收到它们对应的数据则判定其对应数据不可达。
-
-- 顺序NAT和无序NAT都是NAT类型网关；顺序NAT网关下，新建立的映射的网关的端口是连续的。实现中、两者距离小于7则判断为顺序NAT。
-
-  
 
 <font color="red">--------------------------------------------------------------------分割线-------------------------------------------------------------------------------------------</font>
 
