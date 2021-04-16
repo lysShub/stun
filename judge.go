@@ -70,6 +70,8 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
 			s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))
 
+			fmt.Println("30", s.dbj.M)
+
 			if strconv.Itoa(raddr.Port) == string(Port1) {
 				if err = s.Send(conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
 					return
@@ -123,6 +125,9 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if len(da) != 18 {
 				return
 			}
+
+			fmt.Println("120", s.dbj.M)
+			fmt.Println("120", raddr.IP, raddr.Port)
 
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
 
