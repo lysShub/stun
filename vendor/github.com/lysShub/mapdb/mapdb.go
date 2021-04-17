@@ -34,13 +34,12 @@ func (d *Db) Init() {
 			r = (<-(d.q.MQ))
 			v, ok := r.(string)
 			if ok {
-				d.lock.RLock()
 				delete(d.M, v)
-				d.lock.RUnlock()
 			}
 		}
 	}()
 	d.initFianal.Wait()
+
 }
 
 // D 删除
@@ -52,51 +51,49 @@ func (d *Db) D(id string) {
 
 // R 读取(没有将会返回空字符串)
 func (d *Db) R(id, field string) string {
-	d.lock.RLock()
-	var r string = d.M[id][field]
-	d.lock.RUnlock()
-	return r
+	return d.M[id][field]
 }
 
-// U 更新值
-func (d *Db) U(id, field, value string, ttl ...time.Duration) {
-
+// U 更新值(表不存在将不会记录)
+func (d *Db) U(id, field, value string) {
+	var t map[string]string = make(map[string]string)
+	t = d.M[id]
+	if t == nil {
+		return
+	}
+	t[field] = value
 	d.lock.RLock()
-	d.M[id][field] = value
+	d.M[id] = t
 	d.lock.RUnlock()
+
+}
+
+// Ut 更新表(表不存在将不会记录)
+func (d *Db) Ut(id string, t map[string]string) {
+
+	if d.M[id] == nil {
+		return
+	}
+	d.lock.RLock()
+	d.M[id] = t
+	d.lock.RUnlock()
+}
+
+// Ct 创造表(ttl及表的生存时间，请使用UTC时间)
+func (d *Db) Ct(id string, t map[string]string, ttl ...time.Duration) {
+
+	var ct time.Time
+	d.lock.RLock()
+	d.M[id] = t
+	if len(ttl) != 0 {
+		ct = time.Now().Add(ttl[0])
+	}
+	d.lock.RUnlock()
+
 	// ttl
 	if len(ttl) != 0 {
 		d.q.Add(tq.Ts{
-			T: time.Now().Add(ttl[0]),
-			P: id,
-		})
-	}
-}
-
-// Ut 更新表
-func (d *Db) Ut(id string, t map[string]string, ttl ...time.Duration) {
-
-	if d.M[id] != nil {
-		var r map[string]string = make(map[string]string)
-		d.lock.RLock()
-		for k, v := range d.M[id] {
-			r[k] = v
-		}
-		for k, v := range t {
-			r[k] = v
-		}
-		d.M[id] = r
-		d.lock.RUnlock()
-	} else {
-		d.lock.RLock()
-		d.M[id] = t
-		d.lock.RUnlock()
-	}
-
-	// ttl
-	if len(ttl) != 0 {
-		d.q.Add(tq.Ts{
-			T: time.Now().Add(ttl[0]),
+			T: ct,
 			P: id,
 		})
 	}
@@ -105,11 +102,8 @@ func (d *Db) Ut(id string, t map[string]string, ttl ...time.Duration) {
 
 // Et 表是否存在(异常情况返回false)
 func (d *Db) Et(id string) bool {
-	d.lock.RLock()
 	if d.M[id] == nil {
-		d.lock.RUnlock()
 		return false
 	}
-	d.lock.RUnlock()
 	return true
 }

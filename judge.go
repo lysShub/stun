@@ -15,7 +15,7 @@ import (
 
 // DiscoverSever
 // 参数为第一端口和第二端口，接收到的数据，对方的地址
-func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
+func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
 
 	if len(da) < 18 {
 		return
@@ -33,7 +33,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 	/* 开始 */
 	if step == 10 {
-		if len(da) != 20 {
+		if len(da) < 20 {
 			return
 		}
 
@@ -44,7 +44,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbj.Ut(string(juuid), D)
 
-		if err = s.Send(conn, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]), raddr); e.Errlog(err) {
+		if err = s.Send(conn1, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]), raddr); e.Errlog(err) {
 			return
 		}
 	} else {
@@ -63,43 +63,43 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 		if step == 30 {
 
-			if len(da) != 20 {
+			if len(da) < 18 {
 				return
 			}
-			s.dbj.U(string(juuid), "IP2", raddr.IP.String())
-			s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
-			s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))
+			// s.dbj.U(string(juuid), "IP2", raddr.IP.String())
+			// s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
+			// s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))
 
 			fmt.Println("30", s.dbj.M)
 
-			if strconv.Itoa(raddr.Port) == string(Port1) {
-				if err = s.Send(conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
+			if strconv.Itoa(raddr.Port) == string(Port1) { // 锥形NAT
+				if err = s.Send(conn3, append(juuid, 40), natAddr1); e.Errlog(err) {
 					return
 				}
-				if err = s.Send(conn, append(juuid, 50), natAddr1); e.Errlog(err) {
+				if err = s.Send(conn1, append(juuid, 50), natAddr1); e.Errlog(err) {
 					return
 				}
 				s.dbj.U(string(juuid), "step", "50")
 
 			} else {
 
-				if raddr.Port == int(da[18])<<8+int(da[19]) && Port1 == s.dbj.R(string(juuid), "c1") {
+				if Port1 == s.dbj.R(string(juuid), "c1") && strconv.Itoa(raddr.Port) == Port1 { // 公网IP
 
-					if err = s.Send(conn, append(juuid, 100), natAddr1); e.Errlog(err) {
+					if err = s.Send(conn1, append(juuid, 100), natAddr1); e.Errlog(err) {
 						return
 					}
 					s.dbj.U(string(juuid), "step", "100")
 
-				} else {
+				} else { // 对称NAT
 
 					if raddr.Port-natAddr1.Port <= 5 && 0 < raddr.Port-natAddr1.Port {
-						if err = s.Send(conn, append(juuid, 110), natAddr1); e.Errlog(err) {
+						if err = s.Send(conn1, append(juuid, 110), natAddr1); e.Errlog(err) {
 							return
 						}
 						s.dbj.U(string(juuid), "step", "110")
 
 					} else {
-						if err = s.Send(conn, append(juuid, 250), natAddr1); e.Errlog(err) {
+						if err = s.Send(conn1, append(juuid, 250), natAddr1); e.Errlog(err) {
 							return
 						}
 						s.dbj.U(string(juuid), "step", "250")
@@ -116,7 +116,7 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 			if err = s.Send(ip2conn, append(juuid, 70), raddr); e.Errlog(err) {
 				return
 			}
-			if err = s.Send(conn, append(juuid, 80), raddr); e.Errlog(err) {
+			if err = s.Send(conn1, append(juuid, 80), raddr); e.Errlog(err) {
 				return
 			}
 			s.dbj.U(string(juuid), "step", "80")
@@ -131,19 +131,19 @@ func (s *STUN) judgeSever(conn, conn2, ip2conn *net.UDPConn, da []byte, raddr *n
 
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
 
-				s.Send(conn, append(juuid, 250), natAddr1)
+				s.Send(conn1, append(juuid, 250), natAddr1)
 				s.dbj.U(string(juuid), "step", "250")
 
 			} else {
 				var bias int = raddr.Port - natAddr1.Port
 				if (bias < 10 && bias > 0) || (bias > -10 && bias < 0) {
 
-					s.Send(conn, append(juuid, 230), natAddr1)
+					s.Send(conn1, append(juuid, 230), natAddr1)
 					s.dbj.U(string(juuid), "step", "230")
 
 				} else {
 
-					s.Send(conn, append(juuid, 240), natAddr1)
+					s.Send(conn1, append(juuid, 240), natAddr1)
 					s.dbj.U(string(juuid), "step", "240")
 				}
 			}
@@ -167,7 +167,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	//  e 顺序对称形NAT
 	//  f 无序对称NAT
 
-	var c1, c2 int = port, port + 1
+	var localP1, localP2 int = port, port + 1
 
 	var juuid []byte
 	juuid = append(juuid, 'J')
@@ -175,14 +175,14 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
 	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}
-	// var raddr2 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s2}
+	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s2}
 
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: c1})
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: localP1})
 	if e.Errlog(err) {
 		return -1, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: c2}, raddr1)
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: localP2}, raddr1)
 	if e.Errlog(err) {
 		return -1, err
 	}
@@ -227,7 +227,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	/* 开始 */
 
 	// 发 10
-	if err = s.Send(conn, append(da, 10, uint8(c1>>8), uint8(c1)), raddr1); e.Errlog(err) {
+	if err = s.Send(conn, append(da, 10, uint8(localP1>>8), uint8(localP1)), raddr1); e.Errlog(err) {
 		return -1, err
 	}
 
@@ -243,7 +243,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	}
 
 	// 第二端口发 30
-	if err = s.Send(conn2, append(juuid, 30, uint8(c2>>8), uint8(c2)), nil); e.Errlog(err) {
+	if err = s.Send(conn, append(juuid, 30), raddr2); e.Errlog(err) {
 		return -1, err
 	}
 

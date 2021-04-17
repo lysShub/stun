@@ -14,21 +14,22 @@
 网络地址转换（英语：Network Address Translation，缩写：NAT；又称网络掩蔽、IP掩蔽）在计算机网络中是一种在IP数据包通过路由器或防火墙时重写来源IP地址或目的IP地址的技术。这种技术被普遍使用在有多台主机但只通过一个公有IP地址访问互联网的私有网络中。它是一个方便且得到了广泛应用的技术。当然，NAT也让主机之间的通信变得复杂，导致了通信效率的降低。--wikipedia
 ```
 
-​		严格意义上，NAT网关分为：静态NAT、动态NAT、PAT(端口多路复用)，PAT和NAPT(网络地址端口转换)相似。我们的对象是NAPT，这样的话、如果NAPT能完成穿隧，那么动态NAT和静态NAT也能实现。以下NAPT成为NAT。
+​		严格意义上，NAT网关分为：静态NAT、动态NAT、PAT(端口多路复用)、亦称NAPT(网络地址端口转换)。我们探讨的对象是NAPT，因为绝大多数网关都是这种、而且NAPT能完成穿隧，那么动态NAT和静态NAT也能实现。以下NAPT亦称为NAT。
 
 ​		NAT分类与性质：
 
+<font style="font-size:14px">我们将内网地址和NAT网关的公网地址间的对应关系称为映射，无论什么NAT、映射的创建只能由内网机器发出数据包而被创建。NAT大体分为锥形和对称形，这是形象化的表述。对于锥形NAT，当你用相同的本地地址请求不同的目的地地址时，网关使用同一公网地址；而对称NAT则相反，只要四元组有任何的改变，映射的公网地址也会随之改变。以上描述是对于”出“的，而对于”入“的，请看下表：</font>
+
 | name                              | directions                                                   |
 | --------------------------------- | ------------------------------------------------------------ |
-| 完全锥形(Full Cone)               | 映射建立后，NAT会接收并转发所有数据包到映射对应的内网机器上  |
-| IP限制锥形(Restricted Cone)       | 映射建立后，NAT只会接收并转发来自指定IP的数据包，这个指定IP在映射创建时确定 |
-| 端口限制锥形(PortRestricted Cone) | 映射建立后，NAT只会接收并转发来自指定IP且指定端口的数据包，即来自指定地址的数据包 |
-| 对称形(Symmetric NAT)             | 对”来“的数据包具有端口限制锥形的规则同时；如果”去“的数据包的四元组发生改变，还将会创建新的映射 |
+| 完全锥形(Full Cone)               | 映射建立后，NAT会接收所有数据包到映射对应的内网机器上        |
+| IP限制锥形(Restricted Cone)       | 映射建立后，NAT只会接收来自指定IP的数据包，这个指定IP是映射创建时的目的地IP |
+| 端口限制锥形(PortRestricted Cone) | 映射建立后，NAT只会接收来自指定IP且指定端口的数据包，这个指定地址也是映射创建时的目的地地址 |
+| 对称形(Symmetric NAT)             | 与端口限制锥形相同                                           |
 
 说明：
 
-- 映射的建立只能是由内网机器请求公网IP时在NAT网关创建。四元组即通信双方的IP和端口。
-- IP限制锥形大多时称为限制锥形(Restricted Cone)，称其为IP限制锥形更明了。
+- IP限制锥形大多时称为限制锥形(Restricted Cone)，称其为IP限制锥形。
 
 ### NAT类型判断
 
@@ -44,16 +45,16 @@ NAT类型判断流程。
 | <font color='red'>0</font>   | ---       | ---       | ---         | 服务器无回复，可能服务器宕机或无网络                         |
 | 10                           | client:C1 | sever:S1  | Juuid:1:C1  | 开始、C1占用2字节为client使用端口；sever应保存Juuid、网关端口，及使用端口 |
 | 20                           | sever:S1  | client:C1 | Juuid:2:ip2 | sever回复client，client接受到20后将执行30；没有接收到返回0。ip2是第二网卡的公网IP，占用4个字节 |
-| 30                           | client:C2 | sever:S1  | Juuid:30:C2 | client使用的第二端口请求sever, sever比较两次(流程10和30)请求的网关端口是否相等。相等需要进一步判断(锥形NAT；40、50)。不相等则有对称形NAT和公网IP两种情况；如果两次请求的网关端口分别和使用端口(C1、C2)相同可能为公网IP(90)，否则为对称NAT，如果两次请求的网关端口范围大于5则无序对称NAT(250)、否则顺序对称NAT(90)。 |
-| 40                           | sever:S2  | client:C1 | Juuid:40    | sever使用第二端口进行回复，client不能收到则表示为端口限制形NAT(220)，否则为完全锥形或IP限制锥形NAT(60) |
+| 30                           | client:C1 | sever:S2  | Juuid:30    | client使用的第二端口请求sever, sever比较两次(流程10和30)请求的网关端口是否相等。相等需要进一步判断(锥形NAT；40、50)。不相等则有对称形NAT和公网IP两种情况；如果两次请求的网关端口都和使用端口(C1)相同可能为公网IP(90)，否则为对称NAT，如果两次请求的网关端口范围大于5则无序对称NAT(250)、否则顺序对称NAT(90)。 |
+| 40                           | sever:S3  | client:C1 | Juuid:40    | sever使用第三端口进行回复，client不能收到则表示为端口限制形NAT(220)，否则为完全锥形或IP限制锥形NAT(60) |
 | 50                           | sever:P1  | client:C1 | Juuid:500   | 表示服务器执行了40                                           |
 | 60                           | client:C1 | sever:S1  | Juuid:60    | 客户端收到40后的回复，为完全或IP限制锥形NAT；执行70、80      |
 | 70                           | sever2:S1 | client:C1 | Juuid:70    | sever使用第二IP回复client，如果client能收到则完全锥形(200)，否则IP限制锥形(210) |
 | 80                           | sever:S1  | client:C1 | Juuid:80    | 表示服务器执行了70                                           |
 | 90                           | sever2:S1 | client:C1 | Juuid:90    | sever使用第二IP回复client，如果client能收到此数据包，则公网IP(180)，否则具有防火墙的公网IP(190) |
-| 100                          | sever:S1  | client:C1 | Juuid:100   | 表示服务器执行了90（70、80过程和90、100过程相同）            |
+| 100                          | sever:S1  | client:C1 | Juuid:100   | 表示服务器执行了90                                           |
 | 110                          | sever:S1  | client:C1 | Juuid:110   | 告知客户端执行120                                            |
-| 120                          | client:C1 | sever2:S1 | Juuid:120   | 服务器收到此数据包后；判断IP和10的网关端口是否相同，如果不相同250，否则继续判断和10的网关端口是否相连，相连则完全顺序对称NAT(230)，否则IP限制顺序对称NAT(240)。 |
+| 120                          | client:C1 | sever2:S1 | Juuid:120   | 服务器收到此数据包后；判断IP和10的网关IP是否相同，如果不相同250，否则继续判断和10的网关端口是否相连，相连则完全顺序对称NAT(230)，否则IP限制顺序对称NAT(240)。 |
 |                              |           |           |             |                                                              |
 | <font color='red'>180</font> | client:C1 | sever:S1  | Juuid:180   | 公网IP                                                       |
 | <font color='red'>190</font> | client:C1 | sever:S1  | Juuid:190   | 具有防火墙的公网IP                                           |

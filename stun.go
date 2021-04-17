@@ -47,6 +47,7 @@ type STUN struct {
 	dbt *mapdb.Db // NAT穿隧数据库
 	s1  int       // 服务器第一端口，与SeverPort相同
 	s2  int       // 服务器第二端口，与SeverPort+1相同
+	s3  int       // 服务器第三端口，与SeverPort+2相同
 }
 
 type R struct {
@@ -77,9 +78,11 @@ func (s *STUN) ClientInit(Sever string) error {
 	if s.SeverPort == 0 {
 		s.s1 = 19986
 		s.s2 = 19987
+		s.s3 = 19988
 	} else {
 		s.s1 = s.SeverPort
 		s.s2 = s.SeverPort + 1
+		s.s3 = s.SeverPort + 2
 	}
 
 	if s.Sever, err = domainToIP(Sever); err != nil {
@@ -104,9 +107,11 @@ func (s *STUN) SeverInit(LIP1, LIP2, WIP2 net.IP) error {
 	if s.SeverPort == 0 {
 		s.s1 = 19986
 		s.s2 = 19987
+		s.s3 = 19988
 	} else {
 		s.s1 = s.SeverPort
 		s.s2 = s.SeverPort + 1
+		s.s3 = s.SeverPort + 2
 	}
 
 	s.LIP1 = LIP1
@@ -122,11 +127,14 @@ func (s *STUN) SeverInit(LIP1, LIP2, WIP2 net.IP) error {
 
 func (s *STUN) RunSever() error {
 
-	var conn, conn2, ip2conn *net.UDPConn
-	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s1}); e.Errlog(err) {
+	var conn1, conn2, conn3, ip2conn *net.UDPConn
+	if conn1, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s1}); e.Errlog(err) {
 		return err
 	}
 	if conn2, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s2}); e.Errlog(err) {
+		return err
+	}
+	if conn3, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP1, Port: s.s3}); e.Errlog(err) {
 		return err
 	}
 	if ip2conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.LIP2, Port: s.s1}); e.Errlog(err) {
@@ -146,25 +154,39 @@ func (s *STUN) RunSever() error {
 			if da[0] == 'J' {
 				cl.Lock()
 				fmt.Println("sever2接收到数据")
-				s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
+				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
 		}
 	}()
-	// 第一IP接收到的数据
+	// 第二端口接收到数据
+	go func() {
+		for {
+			if n, raddr, err = conn2.ReadFromUDP(da); e.Errlog(err) {
+				continue
+			}
+			if da[0] == 'J' {
+				cl.Lock()
+				fmt.Println("第二端口接收到数据")
+				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
+				cl.Unlock()
+			}
+		}
+	}()
+	// 第一端口接收到的数据
 	for {
-		if n, raddr, err = conn.ReadFromUDP(da); e.Errlog(err) {
+		if n, raddr, err = conn1.ReadFromUDP(da); e.Errlog(err) {
 			continue
 		}
 
 		if da[0] == 'J' {
 			cl.Lock()
-			s.judgeSever(conn, conn2, ip2conn, da[:n], raddr)
+			s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 			e.Errlog(err)
 			cl.Unlock()
 
 		} else if da[0] == 'T' {
-			if err = s.throughSever(conn, da[:n], raddr); e.Errlog(err) {
+			if err = s.throughSever(conn1, da[:n], raddr); e.Errlog(err) {
 				continue
 			}
 		}

@@ -3,6 +3,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/lysShub/e v0.1.4 h1:U7EJG5ddlyCfbEqB4hYKsGvPZR47yxaw5A8RDSkM0Rg=
+github.com/lysShub/e v0.1.4/go.mod h1:QULN7XvfQTH+uBKp2yb52NKulE1gkloQVVrBC93Wgqg=
 github.com/lysShub/mapdb v0.1.0 h1:wuQsHQoTznfBIfe/VCBeKV1WvCR7AjtEr9LjWCvg7JY=
 github.com/lysShub/mapdb v0.1.0/go.mod h1:SpNCxgN1PLpp5/z2xifSUax9jZZIvzBfl3NWsi6p0zE=
 github.com/lysShub/mapdb v0.1.1 h1:IAtt3tCICUuy8U+L1+JAJzI66cgaWQyXq2Q4aZy8gJM=
