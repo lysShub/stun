@@ -64,6 +64,7 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 		if step == 30 {
 
 			if len(da) < 18 {
+				fmt.Println("长度小于18")
 				return
 			}
 			// s.dbj.U(string(juuid), "IP2", raddr.IP.String())
@@ -199,7 +200,6 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 			for flag {
 				n, err = conn.Read(da)
 				if err == nil {
-					fmt.Println("step", da[17])
 				}
 				if err != nil {
 					ch <- err
@@ -235,6 +235,8 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	if da, err = R(20); err != nil {
 		return distinguish(err)
 	}
+	fmt.Println("step", da[17])
+
 	if len(da) >= 22 {
 		wip2 = net.IPv4(da[18], da[19], da[20], da[21])
 	} else {
@@ -246,6 +248,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	if err = s.Send(conn, append(juuid, 30), raddr2); e.Errlog(err) {
 		return -1, err
 	}
+	fmt.Println("回复了30")
 
 	// 收  40,50 ,100,250,90,100,110
 	da, err = R(40, 50, 100, 250, 90, 100, 110)
