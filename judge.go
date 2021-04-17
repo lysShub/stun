@@ -44,6 +44,7 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 		D["Port1"] = strconv.Itoa(raddr.Port)                // 第一NAT网关端口
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbj.Ut(string(juuid), D)
+		fmt.Println(s.dbj.M)
 
 		if err = s.Send(conn1, append(juuid, 20, s.WIP2[12], s.WIP2[13], s.WIP2[14], s.WIP2[15]), raddr); e.Errlog(err) {
 			return
