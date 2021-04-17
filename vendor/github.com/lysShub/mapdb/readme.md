@@ -21,8 +21,8 @@ GO111MODULE=on
 goos: windows
 goarch: amd64
 pkg: github.com/lysShub/mapdb/test/test_prop
-BenchmarkComprehensive-8   	 2675017	       451 ns/op	     151 B/op	       3 allocs/op
+BenchmarkComprehensive-8   	 3895675	       433 ns/op	       7 B/op	       0 allocs/op
 PASS
-ok  	github.com/lysShub/mapdb/test/test_prop	1.881s
+ok  	github.com/lysShub/mapdb/test/test_prop	2.060
 ```
 

@@ -50,15 +50,12 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 			return
 		}
 	} else {
-		fmt.Println("进入", step)
 
 		var IP1, Port1 string
 		if Port1 = s.dbj.R(string(juuid), "Port1"); Port1 == "" {
-			fmt.Println("不能获得1")
 			return
 		}
 		if IP1 = s.dbj.R(string(juuid), "IP1"); IP1 == "" {
-			fmt.Println("不能获得1")
 			return
 		}
 		var natAddr1 *net.UDPAddr
