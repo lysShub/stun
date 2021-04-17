@@ -3,7 +3,6 @@ package stun
 import (
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"math/big"
 	"net"
 	"strings"
@@ -153,7 +152,6 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				fmt.Println("sever2接收到数据", raddr.IP, raddr.Port)
 				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
@@ -167,7 +165,6 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				fmt.Println("第二端口接收到数据", raddr.IP, raddr.Port)
 				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
@@ -208,13 +205,11 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 		lnats = append(lnats, tlnat)
 	}
 	lnat := selectMost(lnats)
-	fmt.Println("NAT类型:", lnat)
 	return R{}, nil
 
 	// 尝试穿隧
 	raddr, rnat, err := s.throughClient(append([]byte("T"), id[:]...), port, lnat)
 	if e.Errlog(err) {
-		fmt.Println("对方nat", rnat)
 		return R{}, nil
 	}
 
