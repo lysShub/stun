@@ -67,7 +67,6 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 
 			s.dbj.U(string(juuid), "IP2", raddr.IP.String())
 			s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
-			s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))
 
 			fmt.Println("30", s.dbj.M)
 
