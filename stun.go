@@ -153,7 +153,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				fmt.Println("sever2接收到数据")
+				fmt.Println("sever2接收到数据", raddr.IP, raddr.Port)
 				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
@@ -167,7 +167,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				fmt.Println("第二端口接收到数据", da[:n])
+				fmt.Println("第二端口接收到数据", raddr.IP, raddr.Port)
 				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}

@@ -31,7 +31,7 @@ func main() {
 
 	/* client */
 	fmt.Println("开始l")
-	if err := s.ClientInit("114.116.254.26"); e.Errlog(err) {
+	if err := s.ClientInit("114.116.254.26"); e.Errlog(err) { //119.3.166.124
 		return
 	}
 	fmt.Println(s.RunClient(15683, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
