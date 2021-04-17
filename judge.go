@@ -18,6 +18,7 @@ import (
 func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
 
 	if len(da) < 18 {
+		fmt.Println("小于18")
 		return
 	}
 	step := int(da[17])
@@ -48,6 +49,7 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 			return
 		}
 	} else {
+		fmt.Println("进入")
 
 		var IP1, Port1 string
 		if Port1 = s.dbj.R(string(juuid), "Port1"); Port1 == "" {
@@ -63,10 +65,6 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 
 		if step == 30 {
 
-			if len(da) < 18 {
-				fmt.Println("长度小于18")
-				return
-			}
 			// s.dbj.U(string(juuid), "IP2", raddr.IP.String())
 			// s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
 			// s.dbj.U(string(juuid), "c2", strconv.Itoa(int(da[18])<<8+int(da[19])))

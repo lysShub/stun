@@ -167,7 +167,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				fmt.Println("第二端口接收到数据")
+				fmt.Println("第二端口接收到数据", da[:n])
 				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
