@@ -126,6 +126,7 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 			} else {
 				fmt.Println("第一次请求：", natAddr1.IP, natAddr1.Port)
 				fmt.Println("第三次请求：", raddr.IP, raddr.Port)
+				fmt.Println("--------------------------------------------------")
 
 				if raddr.Port-natAddr1.Port > 0 && raddr.Port-natAddr1.Port <= 10 {
 
