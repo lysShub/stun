@@ -3,6 +3,7 @@ package stun
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -123,6 +124,9 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 				s.dbj.U(string(juuid), "step", "250")
 
 			} else {
+				fmt.Println("第一次请求：", natAddr1.IP, natAddr1.Port)
+				fmt.Println("第三次请求：", raddr.IP, raddr.Port)
+
 				if raddr.Port-natAddr1.Port > 0 && raddr.Port-natAddr1.Port <= 10 {
 
 					s.send(conn1, append(juuid, 230), natAddr1)
