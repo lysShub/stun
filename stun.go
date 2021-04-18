@@ -3,6 +3,7 @@ package stun
 import (
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"math/big"
 	"net"
 	"strings"
@@ -205,6 +206,7 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 		lnats = append(lnats, tlnat)
 	}
 	lnat := selectMost(lnats)
+	fmt.Println("natTyep", lnat)
 	return R{}, nil
 
 	// 尝试穿隧
