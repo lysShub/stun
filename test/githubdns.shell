@@ -1,4 +1,0 @@
-sudo echo 140.82.113.3 github.com >> /etc/hosts
-sudo echo 185.199.108.153 assets-cdn.github.com >> /etc/hosts
-sudo echo 199.232.69.194  github.global.ssl.fastly.net >> /etc/hosts
-sudo systemd-resolve --flush-caches

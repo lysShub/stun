@@ -290,6 +290,11 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 			return -1, err
 		}
 
+		// test
+		if err = s.send(conn, append(juuid, 120), &net.UDPAddr{IP: net.ParseIP("124.70.28.137"), Port: 19986}); err != nil {
+			return -1, err
+		}
+
 		if da, err = R(230, 240, 250); err != nil {
 			return foo(err)
 		} else {
