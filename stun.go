@@ -153,7 +153,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
+				s.discoverSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
 		}
@@ -166,7 +166,7 @@ func (s *STUN) RunSever() error {
 			}
 			if da[0] == 'J' {
 				cl.Lock()
-				s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
+				s.discoverSever(conn1, conn3, ip2conn, da[:n], raddr)
 				cl.Unlock()
 			}
 		}
@@ -179,7 +179,7 @@ func (s *STUN) RunSever() error {
 
 		if da[0] == 'J' {
 			cl.Lock()
-			s.judgeSever(conn1, conn3, ip2conn, da[:n], raddr)
+			s.discoverSever(conn1, conn3, ip2conn, da[:n], raddr)
 			e.Errlog(err)
 			cl.Unlock()
 
@@ -196,7 +196,7 @@ func (s *STUN) RunClient(port int, id [16]byte) (R, error) {
 	var lnats []int
 	for i := 0; i < 1; i++ {
 		var tlnat int
-		if tlnat, err = s.judgeCliet(RandPort()); err != nil {
+		if tlnat, err = s.discoverCliet(RandPort()); err != nil {
 			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "other") {
 				continue // 端口被占用
 			} else {

@@ -1,5 +1,7 @@
 package stun
 
+// NAT类型判断
+
 import (
 	"bytes"
 	"errors"
@@ -15,7 +17,7 @@ import (
 
 // DiscoverSever
 // 参数为第一端口和第二端口，接收到的数据，对方的地址
-func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
+func (s *STUN) discoverSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *net.UDPAddr) {
 
 	if len(da) < 18 {
 		return
@@ -147,7 +149,7 @@ func (s *STUN) judgeSever(conn1, conn3, ip2conn *net.UDPConn, da []byte, raddr *
 }
 
 // DiscoverClient
-func (s *STUN) judgeCliet(port int) (int, error) {
+func (s *STUN) discoverCliet(port int) (int, error) {
 	// 返回代码:
 	// -1 错误
 	//  0 无响应
@@ -168,7 +170,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
 	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s1}
-	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s2}
+	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: net.ParseIP(s.Sever), Port: s.s2} //本地第二端口
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: localP1})
 	if err != nil {
@@ -227,7 +229,7 @@ func (s *STUN) judgeCliet(port int) (int, error) {
 	if len(da) < 22 {
 		return -1, errors.New("step 20 : Data length less than 22")
 	}
-	wip2 = net.IPv4(da[18], da[19], da[20], da[21])
+	wip2 = net.IPv4(da[18], da[19], da[20], da[21]) // sever第二IP
 
 	if err = s.send(conn, append(juuid, 30), raddr2); err != nil {
 		return -1, err
