@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"io"
 	"log"
+	"net"
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -39,4 +41,14 @@ func CreateUUID() []byte {
 			return r
 		}
 	}
+}
+
+// GetLocalIP Get LAN IPv4
+func GetLocalIP() (net.IP, error) {
+	con, err := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.ParseIP("114.114.114.114"), Port: 443})
+	if err != nil {
+		return nil, err
+	}
+	defer con.Close()
+	return net.ParseIP(strings.Split(con.LocalAddr().String(), ":")[0]), nil
 }

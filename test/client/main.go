@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"runtime"
 
@@ -19,8 +20,6 @@ func main() {
 		}
 	}
 
-	var s = new(stun.STUN)
-
 	/* sever */
 	// fmt.Println("开始l")
 	// if err := s.SeverInit(net.ParseIP("192.168.0.40"), net.ParseIP("192.168.0.50"), net.ParseIP("119.3.166.124")); e.Errlog(err) {
@@ -30,9 +29,10 @@ func main() {
 
 	/* client */
 	fmt.Println("开始l")
-	if err := s.ClientInit("114.116.254.26"); e.Errlog(err) { //119.3.166.124
+	if cconn, err := stun.InitClient(19986, net.ParseIP("114.116.254.26")); e.Errlog(err) {
 		return
+	} else {
+		fmt.Println(cconn.RunClient(15088, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
 	}
-	fmt.Println(s.RunClient(15088, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
 
 }

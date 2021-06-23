@@ -12,7 +12,7 @@ import (
 )
 
 // ThroughSever
-func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
+func (s *sconn) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 
 	tuuid := da[:17]
 	fmt.Println("tuuid:::::::::::::::", tuuid)
@@ -56,10 +56,10 @@ func (s *STUN) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) er
 
 // ThroughClient
 // 返回对方网关地址和对方NAT类型
-func (s *STUN) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, error) {
+func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, error) {
 
 	var conn *net.UDPConn
-	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.IP(s.Sever), Port: s.s1}); e.Errlog(err) {
+	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.IP(s.sever), Port: s.c1}); e.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()
@@ -146,7 +146,7 @@ func (s *STUN) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, e
 	}
 }
 
-func (s *STUN) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
+func (s *sconn) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
 	fmt.Println("发送20")
 	var rPort1 int
 	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
