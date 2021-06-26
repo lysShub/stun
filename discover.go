@@ -70,40 +70,50 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 			s.dbj.U(string(juuid), "IP2", raddr.IP.String())
 			s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
 
-			if strconv.Itoa(raddr.Port) == string(Port1) { // 锥形NAT
-				if err = s.send(s.conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
-					return
-				}
-				if err = s.send(s.conn1, append(juuid, 50), natAddr1); e.Errlog(err) {
-					return
-				}
-				s.dbj.U(string(juuid), "step", "50")
+			if IP1 == raddr.IP.String() {
 
-			} else {
-
-				if Port1 == s.dbj.R(string(juuid), "c1") && strconv.Itoa(raddr.Port) == Port1 { // 公网IP
-
-					if err = s.send(s.conn1, append(juuid, 100), natAddr1); e.Errlog(err) {
+				if strconv.Itoa(raddr.Port) == string(Port1) { // 锥形NAT
+					if err = s.send(s.conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
 						return
 					}
-					s.dbj.U(string(juuid), "step", "100")
+					if err = s.send(s.conn1, append(juuid, 50), natAddr1); e.Errlog(err) {
+						return
+					}
+					s.dbj.U(string(juuid), "step", "50")
 
-				} else { // 对称NAT
+				} else {
 
-					if raddr.Port-natAddr1.Port <= 5 && 0 < raddr.Port-natAddr1.Port {
+					if Port1 == s.dbj.R(string(juuid), "c1") && strconv.Itoa(raddr.Port) == Port1 { // 公网IP
 
-						if err = s.send(s.conn1, append(juuid, 110), natAddr1); e.Errlog(err) {
+						if err = s.send(s.conn1, append(juuid, 100), natAddr1); e.Errlog(err) {
 							return
 						}
-						s.dbj.U(string(juuid), "step", "110")
+						s.dbj.U(string(juuid), "step", "100")
 
-					} else {
-						if err = s.send(s.conn1, append(juuid, 250), natAddr1); e.Errlog(err) {
-							return
+					} else { // 对称NAT
+
+						// 判断端口相连
+						if raddr.Port-natAddr1.Port <= 5 && 0 < raddr.Port-natAddr1.Port {
+
+							if err = s.send(s.conn1, append(juuid, 110), natAddr1); e.Errlog(err) {
+								return
+							}
+							s.dbj.U(string(juuid), "step", "110")
+
+						} else {
+							if err = s.send(s.conn1, append(juuid, 250), natAddr1); e.Errlog(err) {
+								return
+							}
+							s.dbj.U(string(juuid), "step", "250")
+
 						}
-						s.dbj.U(string(juuid), "step", "250")
 					}
 				}
+			} else {
+				if err = s.send(s.conn1, append(juuid, 251), natAddr1); e.Errlog(err) {
+					return
+				}
+				s.dbj.U(string(juuid), "step", "251")
 			}
 
 		} else if step == 60 {
@@ -120,12 +130,12 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 			s.dbj.U(string(juuid), "step", "80")
 
 		} else if step == 120 {
-			// 进一步区分对称NAT
+			// 区分对称NAT
 
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
 
-				s.send(s.conn1, append(juuid, 250), natAddr1)
-				s.dbj.U(string(juuid), "step", "250")
+				s.send(s.conn1, append(juuid, 251), natAddr1)
+				s.dbj.U(string(juuid), "step", "251")
 
 			} else {
 				fmt.Println("第一次请求：", natAddr1.IP, natAddr1.Port)
@@ -239,8 +249,9 @@ func (s *cconn) discoverCliet() (int, error) {
 	da, err = R(40, 50, 100, 250, 90, 100, 110)
 	if err != nil {
 		return foo(err)
-	} else if da[17] == 250 {
-		return 250, nil
+	} else if da[17] == 250 || da[17] == 251 { // 250、251
+		return int(da[17]), nil
+
 	} else if da[17] == 40 || da[17] == 50 {
 		if da[17] == 50 {
 			if da, err = R(40); err != nil {

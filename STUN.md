@@ -25,9 +25,9 @@
 
 NAT类型判断流程。使用资源：
 
-​		sever：两个IP（sever1、sever2），两个端口（S1、S2）；sever1:S1、sever1:S2、sever2:S1
+​		sever：两个IP（sever1、sever2），两个端口（S1、S2）（sever1:S1、sever1:S2、sever2:S1）
 
-​		client：一个IP（client，网卡内网IP），两个端口（C1、C2）；client:C1、client:C2
+​		client：一个IP（client，网卡内网IP），两个端口（C1、C2）（client:C1、client:C2）
 
 | 序号                         | 发送者    | 接收者    | 数据        | 说明                                                         |
 | ---------------------------- | --------- | --------- | ----------- | ------------------------------------------------------------ |
@@ -49,16 +49,16 @@ NAT类型判断流程。使用资源：
 | <font color='red'>180</font> | client:C1 | sever:S1  | Juuid:180   | 公网IP                                                       |
 | <font color='red'>190</font> | client:C1 | sever:S1  | Juuid:190   | 具有防火墙的公网IP                                           |
 | <font color='red'>200</font> | client:C1 | sever:S1  | Juuid:200   | 完全锥形NAT                                                  |
-| <font color='red'>210</font> | client:C1 | sever:S1  | Juuid:210   | IP限制形NAT                                                  |
-| <font color='red'>220</font> | client:C1 | sever:S1  | Juuid:220   | 端口限制NAT                                                  |
+| <font color='red'>210</font> | client:C1 | sever:S1  | Juuid:210   | IP限制锥形NAT                                                |
+| <font color='red'>220</font> | client:C1 | sever:S1  | Juuid:220   | 端口限制锥形NAT                                              |
 | <font color='red'>230</font> | sever:S1  | client:C1 | Juuid:230   | 完全顺序对称NAT                                              |
 | <font color='red'>240</font> | sever:S1  | client:C1 | Juuid:240   | IP限制顺序对称NAT                                            |
-| <font color='red'>250</font> | sever:S1  | client:C1 | Juuid:250   | 无序对称NAT                                                  |
+| <font color='red'>25?</font> | sever:S1  | client:C1 | Juuid:250   | 无序对称NAT（250：同IP随机端口，251：随机IP随机端口）        |
 
 1. 对称NAT
    - **顺序对称NAT**：对于新建对称NAT映射，无论本地地址是多少，分配的NAT网关的IP是相同的，且端口有相邻的规律。
          - <font style="font-size:small;">**完全顺序对称NAT**</font>：新建顺序对称NAT映射时，请求不同的目的地地址，NAT网关分配相邻的端口
-         - <font style="font-size:small">**IP限制顺序对称NAT**</font>：新建顺序对称NAT映射时；只有请求的目的地IP相同，那么NAT网关分配的端口才是相邻的；如果IP不同，那么NAT网关分配的端口是随机的。
+             - <font style="font-size:small">**IP限制顺序对称NAT**</font>：新建顺序对称NAT映射时；只有请求的目的地IP相同，那么NAT网关分配的端口才是相邻的；如果IP不同，那么NAT网关分配的端口是随机的。
    - **无序对称NAT**：对称NAT中除了顺序对称NAT外都是无序对称NAT。对于新建对称NAT映射，无论什么情况，新映射的NAT网关端口是随机的，甚至新映射的NAT网关的IP是随机的（此种网络常见于校园网，完全屏蔽了种子下载）。
 
 ​	2. 流程中有使用超时机制，在糟糕的网络环境下可能存在误判的概率。
@@ -69,10 +69,13 @@ NAT类型判断流程。使用资源：
 
 ### NAT穿透
 
--  250与250组合无法进行穿隧
-- 
+- 250与250组合无法进行穿隧
+
+  
 
 ​	 基于以上对NAT类型的分类，将穿透组合分为2种：
+
+
 
 
    - 双方NAT中没有240及250的，A类组合
