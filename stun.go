@@ -41,7 +41,7 @@ type sconn struct {
 type cconn struct {
 	STUN
 	sever    net.IP // 服务器IP
-	cp1, cp2 int    // 本地(客户端)使用端口
+	cp1, cp2 int    // 本地(客户端)使用端口, client port
 	flag     []byte
 	raddr    *net.UDPAddr // 对方地址
 }
