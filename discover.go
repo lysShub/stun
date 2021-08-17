@@ -93,7 +93,7 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 					} else { // 对称NAT
 
 						// 判断端口相连
-						if raddr.Port-natAddr1.Port <= 5 && 0 < raddr.Port-natAddr1.Port {
+						if raddr.Port-natAddr1.Port <= s.ExtPorts && 0 < raddr.Port-natAddr1.Port {
 
 							if err = s.send(s.conn1, append(juuid, 110), natAddr1); e.Errlog(err) {
 								return
@@ -160,8 +160,8 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 	}
 }
 
-// discoverCliet
-func (s *cconn) discoverCliet() (int, error) {
+// DiscoverCliet
+func (s *cconn) DiscoverCliet() (int, error) {
 	// 返回代码:
 	// -1 错误
 	//  0 无响应
@@ -179,15 +179,15 @@ func (s *cconn) discoverCliet() (int, error) {
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
-	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.c1}
-	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.c2} //本地第二端口
+	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.cp1}
+	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.cp2} //服务器第二端口
 
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.c1})
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.cp1})
 	if err != nil {
 		return -1, err
 	}
 	defer conn.Close()
-	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.c2}, raddr1)
+	conn2, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.cp2}, raddr1)
 	if err != nil {
 		return -1, err
 	}
@@ -228,7 +228,7 @@ func (s *cconn) discoverCliet() (int, error) {
 	/* 开始 */
 
 	// 10
-	if err = s.send(conn, append(da, 10, uint8(s.c1>>8), uint8(s.c1)), raddr1); err != nil {
+	if err = s.send(conn, append(da, 10, uint8(s.cp1>>8), uint8(s.cp1)), raddr1); err != nil {
 		return -1, err
 	}
 
@@ -299,7 +299,7 @@ func (s *cconn) discoverCliet() (int, error) {
 		}
 	} else if da[17] == 110 {
 
-		if err = s.send(conn, append(juuid, 120), &net.UDPAddr{IP: wip2, Port: s.c1}); err != nil {
+		if err = s.send(conn, append(juuid, 120), &net.UDPAddr{IP: wip2, Port: s.cp1}); err != nil {
 			return -1, err
 		}
 
@@ -336,7 +336,7 @@ func (s *STUN) send(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
 
 func foo(err error) (int, error) {
 	if strings.Contains(err.Error(), "timeout") {
-		return 0, errors.New("sever no reply or network timeout")
+		return 0, errSever
 	}
 	return -1, err
 }

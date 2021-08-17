@@ -13,5 +13,6 @@
             "username": "root",
             "password": "1"
         }
-    ]
+    ],
+    "go.inferGopath": false
 }
