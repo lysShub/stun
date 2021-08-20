@@ -12,6 +12,7 @@ import (
 )
 
 // InitSever 运行端口, 本地第二IP及对应的公网IP
+//  第一IP的内网IP可自动获取
 func InitSever(port int, lip2, wip2 net.IP) (*sconn, error) {
 	var s = new(sconn)
 	s.Iterate = 5
