@@ -67,6 +67,10 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 
 		if step == 30 {
 
+			fmt.Println("---30----------------------------------")
+			fmt.Println("10", natAddr1)
+			fmt.Println("30", raddr)
+
 			s.dbj.U(string(juuid), "IP2", raddr.IP.String())
 			s.dbj.U(string(juuid), "Port2", strconv.Itoa(raddr.Port))
 
@@ -132,15 +136,16 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 		} else if step == 120 {
 			// 区分对称NAT
 
+			fmt.Println("请求：10：", natAddr1.IP, natAddr1.Port)
+			fmt.Println("请求：120：", raddr.IP, raddr.Port)
+			fmt.Println("--------------------------------------------------")
+
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
 
 				s.send(s.conn1, append(juuid, 251), natAddr1)
 				s.dbj.U(string(juuid), "step", "251")
 
 			} else {
-				fmt.Println("第一次请求：", natAddr1.IP, natAddr1.Port)
-				fmt.Println("第三次请求：", raddr.IP, raddr.Port)
-				fmt.Println("--------------------------------------------------")
 
 				if raddr.Port-natAddr1.Port > 0 && raddr.Port-natAddr1.Port <= 10 {
 
@@ -174,13 +179,12 @@ func (s *cconn) DiscoverCliet() (int, error) {
 	//  240 IP限制顺序对称NAT
 	//  250 无序对称NAT
 
-	var juuid []byte
-	juuid = append(juuid, 'J')
+	var juuid []byte = []byte{'J'}
 	juuid = append(juuid, com.CreateUUID()...)
 	var da []byte = []byte(juuid)
 	var wip2 net.IP
 	var raddr1 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.cp1}
-	var raddr2 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.cp2} //服务器第二端口
+	// var raddr2 *net.UDPAddr = &net.UDPAddr{IP: s.sever, Port: s.cp2} //服务器第二端口
 
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: s.cp1})
 	if err != nil {
@@ -240,8 +244,10 @@ func (s *cconn) DiscoverCliet() (int, error) {
 		return -1, errors.New("step 20 : Data length less than 22")
 	}
 	wip2 = net.IPv4(da[18], da[19], da[20], da[21]) // sever第二IP
+	fmt.Println("sever IP2", wip2)
 
-	if err = s.send(conn, append(juuid, 30), raddr2); err != nil {
+	// 30
+	if err = s.send(conn2, append(juuid, 30), nil); err != nil {
 		return -1, err
 	}
 
@@ -268,11 +274,13 @@ func (s *cconn) DiscoverCliet() (int, error) {
 			return 0, err
 		}
 
-		da, err = R(0xc, 70, 80)
+		// da, err = R(0xc, 70, 80) ? 什么东西
+		da, err = R(70, 80)
 		if err != nil {
 			return foo(err)
 
 		} else if da[17] == 80 {
+
 			if da, err = R(70); err != nil {
 				if strings.Contains(err.Error(), "timeout") {
 					s.send(conn, append(juuid, 210), raddr1)
