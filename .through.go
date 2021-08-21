@@ -42,7 +42,7 @@ func (s *sconn) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) e
 			fmt.Println("-------------------------------------------------------")
 
 			/* 回复 */
-			if err = s.send20(tuuid, raddr, conn); e.Errlog(err) {
+			if err = s.send20(tuuid, raddr, conn); com.Errlog(err) {
 				return err
 			}
 		}
@@ -59,14 +59,14 @@ func (s *sconn) throughSever(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) e
 func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, error) {
 
 	var conn *net.UDPConn
-	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.IP(s.sever), Port: s.c1}); e.Errlog(err) {
+	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: port}, &net.UDPAddr{IP: net.IP(s.sever), Port: s.c1}); com.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()
 
 	// 发10
 	for i := 0; i < s.Iterate; i++ {
-		if _, err := conn.Write(append(tuuid, 10, uint8(lnat), uint8(s.ExtPorts>>8), uint8(s.ExtPorts))); e.Errlog(err) {
+		if _, err := conn.Write(append(tuuid, 10, uint8(lnat), uint8(s.ExtPorts>>8), uint8(s.ExtPorts))); com.Errlog(err) {
 			return nil, 0, err
 		}
 	}
@@ -74,7 +74,7 @@ func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, 
 	// 等待匹配完成 收20
 	var rnat, ep int        // nat类型 泛端口长度
 	var cRaddr *net.UDPAddr // 对方使用端口对应的网关地址
-	if rnat, ep, cRaddr, err = s.read20(conn, tuuid); e.Errlog(err) {
+	if rnat, ep, cRaddr, err = s.read20(conn, tuuid); com.Errlog(err) {
 		return nil, 0, errors.New("sever no reply")
 	}
 	conn.Close()
@@ -85,7 +85,7 @@ func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, 
 	}
 
 	// 开始穿隧
-	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: port}); e.Errlog(err) {
+	if conn, err = net.ListenUDP("udp", &net.UDPAddr{IP: nil, Port: port}); com.Errlog(err) {
 		return nil, 0, err
 	}
 	defer conn.Close()
@@ -113,7 +113,7 @@ func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, 
 		var da []byte = make([]byte, 64)
 		var nRaddr *net.UDPAddr
 		for flag {
-			if _, nRaddr, err = conn.ReadFromUDP(da); flag == true && e.Errlog(err) {
+			if _, nRaddr, err = conn.ReadFromUDP(da); flag == true && com.Errlog(err) {
 				continue
 			}
 			if nRaddr != nil {
@@ -122,7 +122,7 @@ func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, 
 			if bytes.Equal(tuuid, da[:17]) && (da[17] == 30 || da[17] == 40) && nRaddr != nil {
 				if da[17] == 30 { // 收到30，回复40后退出
 					for i := 0; i < s.Iterate*4; i++ {
-						if _, err = conn.WriteToUDP(append(tuuid, 40), nRaddr); e.Errlog(err) {
+						if _, err = conn.WriteToUDP(append(tuuid, 40), nRaddr); com.Errlog(err) {
 							continue
 						}
 					}
@@ -149,7 +149,7 @@ func (s *cconn) throughClient(tuuid []byte, port, lnat int) (*net.UDPAddr, int, 
 func (s *sconn) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) error {
 	fmt.Println("发送20")
 	var rPort1 int
-	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); e.Errlog(err) {
+	if rPort1, err = strconv.Atoi(s.dbt.R(string(tuuid), "port1")); com.Errlog(err) {
 		return err
 	}
 	var r1, r2 *net.UDPAddr = nil, raddr
@@ -160,7 +160,7 @@ func (s *sconn) send20(tuuid []byte, raddr *net.UDPAddr, conn *net.UDPConn) erro
 		ep = s.dbt.R(string(tuuid), "ep2")
 	}
 	var epint int
-	if epint, err = strconv.Atoi(ep); e.Errlog(err) {
+	if epint, err = strconv.Atoi(ep); com.Errlog(err) {
 		return err
 	}
 	var nat1, nat2 string = s.dbt.R(string(tuuid), "nat1"), s.dbt.R(string(tuuid), "nat2")

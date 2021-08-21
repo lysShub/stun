@@ -3,6 +3,7 @@ package com
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"io"
 	"log"
 	"math/big"
@@ -11,8 +12,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/lysShub/e"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -55,15 +56,20 @@ func GetLocalIP() (net.IP, error) {
 		return nil, err
 	}
 	defer con.Close()
-	return net.ParseIP(strings.Split(con.LocalAddr().String(), ":")[0]), nil
+	lip := net.ParseIP(strings.Split(con.LocalAddr().String(), ":")[0]).To16()
+	if lip == nil {
+		return nil, errors.New("can't get Lan IP")
+	} else {
+		return lip, nil
+	}
 }
 
 func RandPort() int {
 	b := new(big.Int).SetInt64(int64(52000))
 	i, err := rand.Int(rand.Reader, b)
-	r := int(i.Int64()) + 100
-	if e.Errlog(err) {
-		return 52942
+	r := int(i.Int64()) + 1024
+	if err != nil {
+		return int(time.Now().Unix()) % 5000
 	}
 	return r
 }

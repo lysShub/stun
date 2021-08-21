@@ -47,7 +47,7 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 		D["c1"] = strconv.Itoa(int(da[18])<<8 + int(da[19])) // 第一使用端口
 		s.dbj.Ut(string(juuid), D)
 
-		if err = s.send(s.conn1, append(juuid, 20, s.wip2[12], s.wip2[13], s.wip2[14], s.wip2[15]), raddr); e.Errlog(err) {
+		if err = s.send(s.conn1, append(juuid, 20, s.wip2[12], s.wip2[13], s.wip2[14], s.wip2[15]), raddr); com.Errlog(err) {
 			return
 		}
 
@@ -61,7 +61,7 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 			return
 		}
 		var natAddr1 *net.UDPAddr
-		if natAddr1, err = net.ResolveUDPAddr("udp", string(IP1)+":"+string(Port1)); e.Errlog(err) {
+		if natAddr1, err = net.ResolveUDPAddr("udp", string(IP1)+":"+string(Port1)); com.Errlog(err) {
 			return
 		}
 
@@ -77,10 +77,10 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 			if IP1 == raddr.IP.String() {
 
 				if strconv.Itoa(raddr.Port) == string(Port1) { // 锥形NAT
-					if err = s.send(s.conn2, append(juuid, 40), natAddr1); e.Errlog(err) {
+					if err = s.send(s.conn2, append(juuid, 40), natAddr1); com.Errlog(err) {
 						return
 					}
-					if err = s.send(s.conn1, append(juuid, 50), natAddr1); e.Errlog(err) {
+					if err = s.send(s.conn1, append(juuid, 50), natAddr1); com.Errlog(err) {
 						return
 					}
 					s.dbj.U(string(juuid), "step", "50")
@@ -89,7 +89,7 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 
 					if Port1 == s.dbj.R(string(juuid), "c1") && strconv.Itoa(raddr.Port) == Port1 { // 公网IP
 
-						if err = s.send(s.conn1, append(juuid, 100), natAddr1); e.Errlog(err) {
+						if err = s.send(s.conn1, append(juuid, 100), natAddr1); com.Errlog(err) {
 							return
 						}
 						s.dbj.U(string(juuid), "step", "100")
@@ -99,13 +99,13 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 						// 判断端口相连
 						if raddr.Port-natAddr1.Port <= s.ExtPorts && 0 < raddr.Port-natAddr1.Port {
 
-							if err = s.send(s.conn1, append(juuid, 110), natAddr1); e.Errlog(err) {
+							if err = s.send(s.conn1, append(juuid, 110), natAddr1); com.Errlog(err) {
 								return
 							}
 							s.dbj.U(string(juuid), "step", "110")
 
 						} else {
-							if err = s.send(s.conn1, append(juuid, 250), natAddr1); e.Errlog(err) {
+							if err = s.send(s.conn1, append(juuid, 250), natAddr1); com.Errlog(err) {
 								return
 							}
 							s.dbj.U(string(juuid), "step", "250")
@@ -114,7 +114,7 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 					}
 				}
 			} else {
-				if err = s.send(s.conn1, append(juuid, 251), natAddr1); e.Errlog(err) {
+				if err = s.send(s.conn1, append(juuid, 251), natAddr1); com.Errlog(err) {
 					return
 				}
 				s.dbj.U(string(juuid), "step", "251") // NAT有IP池
@@ -125,10 +125,10 @@ func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 				return
 			}
 
-			if err = s.send(s.conn3, append(juuid, 70), raddr); e.Errlog(err) {
+			if err = s.send(s.conn3, append(juuid, 70), raddr); com.Errlog(err) {
 				return
 			}
-			if err = s.send(s.conn1, append(juuid, 80), raddr); e.Errlog(err) {
+			if err = s.send(s.conn1, append(juuid, 80), raddr); com.Errlog(err) {
 				return
 			}
 			s.dbj.U(string(juuid), "step", "80")
@@ -333,7 +333,7 @@ func (s *client) DiscoverCliet() (int, error) {
 
 // 回复
 func (s *STUN) send(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
-	for i := 0; i < s.reSendTimes; i++ {
+	for i := 0; i < s.ResendTimes; i++ {
 		if raddr != nil {
 			if _, err := conn.WriteToUDP(da, raddr); err != nil {
 				return err

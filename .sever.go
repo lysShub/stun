@@ -15,7 +15,7 @@ import (
 //  第一IP的内网IP可自动获取
 func InitSever(port int, lip2, wip2 net.IP) (*sever, error) {
 	var s = new(sever)
-	s.reSendTimes = 5
+	s.ResendTimes = 5
 	s.MatchTime = time.Second * 30
 	s.TimeOut = time.Second * 3
 	s.ExtPorts = 5
@@ -64,7 +64,7 @@ func (s *sever) RunSever() error {
 	// 第二IP接收到的数据
 	go func() {
 		for {
-			if n, raddr, err = s.conn3.ReadFromUDP(da); e.Errlog(err) {
+			if n, raddr, err = s.conn3.ReadFromUDP(da); com.Errlog(err) {
 				continue
 			}
 			if da[0] == 'J' {
@@ -77,7 +77,7 @@ func (s *sever) RunSever() error {
 	// 第二端口接收到数据
 	go func() {
 		for {
-			if n, raddr, err = s.conn2.ReadFromUDP(da); e.Errlog(err) {
+			if n, raddr, err = s.conn2.ReadFromUDP(da); com.Errlog(err) {
 				continue
 			}
 			if da[0] == 'J' {
@@ -89,18 +89,18 @@ func (s *sever) RunSever() error {
 	}()
 	// 第一端口接收到的数据
 	for {
-		if n, raddr, err = s.conn1.ReadFromUDP(da); e.Errlog(err) {
+		if n, raddr, err = s.conn1.ReadFromUDP(da); com.Errlog(err) {
 			continue
 		}
 
 		if da[0] == 'J' {
 			cl.Lock()
 			s.discoverSever(da[:n], raddr)
-			e.Errlog(err)
+			com.Errlog(err)
 			cl.Unlock()
 
 		} else if da[0] == 'T' {
-			// if err = s.throughSever(conn1, da[:n], raddr); e.Errlog(err) {
+			// if err = s.throughSever(conn1, da[:n], raddr); com.Errlog(err) {
 			// 	continue
 			// }
 		}

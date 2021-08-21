@@ -4,18 +4,16 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/lysShub/e"
-	"github.com/lysShub/stun"
+	"github.com/lysShub/stun/internal/client"
 )
 
 func main() {
 
 	/* client */
 	fmt.Println("开始l")
-	if cconn, err := stun.InitClient(19986, net.ParseIP("114.116.254.26")); e.Errlog(err) {
-		return
-	} else {
-		fmt.Println(cconn.RunClient(19986, [16]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'a', 'b', 'c', 'd', 'e', 'f'}))
+
+	if _, err := client.Run(19986, net.ParseIP("114.116.254.26")); err != nil {
+		fmt.Println(err)
 	}
 
 }

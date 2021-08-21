@@ -1,22 +1,42 @@
 package stun
 
+/*
+*	NAT判断和NAT穿透任务完全解耦
+ */
+
 import (
 	"errors"
 	"net"
-	"time"
 
 	"github.com/lysShub/mapdb"
+	"github.com/lysShub/stun/config"
 )
 
 //  无论客户端还是服务器都需要两个IP(IP1和IP2)。同一个VPS绑定两张网卡；这两张网卡的私网IP分别是a、b，公网IP分别是x，y。则在客户端IP1、IP2分别配置为x、y，在服务器IP1、IP2分别配置为a、b。
 
 type STUN struct {
-	reSendTimes int           // 同数据包重复发送次数，确保UDP可靠，默认5
-	MatchTime   time.Duration // 匹配时长
-	TimeOut     time.Duration // 超时时间
-	ExtPorts    int           // 泛端口范围，默认7
+	// ResendTimes int           // 同数据包重复发送次数，确保UDP可靠，默认5
+	// MatchTime   time.Duration // 匹配时长
+	// TimeOut     time.Duration // 超时时间
+	// ExtPorts    int           // 泛端口范围，默认7
 
 	Port int // 端口，使用多个端口则依次递增
+}
+
+// Send 回复, 如果raddr!=nil将会使用conn.WriteToUDP
+func (s *STUN) Send(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
+	for i := 0; i < config.ResendTimes; i++ {
+		if raddr != nil {
+			if _, err := conn.WriteToUDP(da, raddr); err != nil {
+				return err
+			}
+		} else {
+			if _, err := conn.Write(da); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 var err error

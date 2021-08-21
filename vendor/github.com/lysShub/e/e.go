@@ -32,7 +32,7 @@ var L = t()
 
 // Errlog returns true if there is error(s)
 //
-// e.g: if e.Errlog(err1,err2){}
+// e.g: if com.Errlog(err1,err2){}
 func Errlog(err ...error) bool {
 
 	var haveErr bool = false

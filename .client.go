@@ -11,7 +11,7 @@ import (
 
 func InitClient(port int, sever net.IP) (*client, error) {
 	var s = new(client)
-	s.reSendTimes = 5
+	s.ResendTimes = 5
 	s.MatchTime = time.Second * 30
 	s.TimeOut = time.Second * 3
 	s.ExtPorts = 5
@@ -39,7 +39,7 @@ func (s *client) RunClient(port int, id [16]byte) error {
 
 	// 尝试穿隧
 	// raddr, rnat, err := s.throughClient(append([]byte("T"), id[:]...), port, natType)
-	// if e.Errlog(err) {
+	// if com.Errlog(err) {
 	// 	return nil
 	// }
 	// fmt.Println(raddr, rnat)
