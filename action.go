@@ -11,7 +11,7 @@ import (
 
 // 实现穿隧
 
-func (s *cconn) Action10() error {
+func (s *client) Action10() error {
 
 	var conn *net.UDPConn
 	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.cp1}, s.raddr); err != nil {
@@ -45,7 +45,7 @@ func (s *cconn) Action10() error {
 	}
 }
 
-func (s *cconn) Action20() error {
+func (s *client) Action20() error {
 	var conn *net.UDPConn
 	if conn, err = net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: s.cp1}, &net.UDPAddr{IP: s.raddr.IP, Port: s.raddr.Port + 1}); err != nil {
 		return err
@@ -78,7 +78,7 @@ func (s *cconn) Action20() error {
 	}
 }
 
-func (s *cconn) Action30() error {
+func (s *client) Action30() error {
 
 	var connCh chan *net.UDPConn = make(chan *net.UDPConn)
 
@@ -136,7 +136,7 @@ func (s *cconn) Action30() error {
 	return err
 }
 
-func (s *cconn) Action40() error {
+func (s *client) Action40() error {
 
 	var connCh chan *net.UDPConn = make(chan *net.UDPConn)
 
@@ -196,15 +196,15 @@ func (s *cconn) Action40() error {
 
 /* ---------------------------------------------- */
 
-func (s *cconn) Action110() error {
+func (s *client) Action110() error {
 	return s.Action10()
 }
 
-func (s *cconn) Action120() error {
+func (s *client) Action120() error {
 	return s.Action20()
 }
 
-func (s *cconn) Action130() error {
+func (s *client) Action130() error {
 	time.Sleep(time.Second)
 
 	var rPort int
@@ -240,7 +240,7 @@ func (s *cconn) Action130() error {
 	}
 }
 
-func (s *cconn) Action140() error {
+func (s *client) Action140() error {
 	var connCh chan *net.UDPConn = make(chan *net.UDPConn)
 
 	var end bool = false
@@ -295,7 +295,7 @@ func (s *cconn) Action140() error {
 	return err
 }
 
-func (s *cconn) Action150() error {
+func (s *client) Action150() error {
 	time.Sleep(time.Second)
 
 	var connCh chan *net.UDPConn = make(chan *net.UDPConn)

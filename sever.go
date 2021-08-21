@@ -13,9 +13,9 @@ import (
 
 // InitSever 运行端口, 本地第二IP及对应的公网IP
 //  第一IP的内网IP可自动获取
-func InitSever(port int, lip2, wip2 net.IP) (*sconn, error) {
-	var s = new(sconn)
-	s.Iterate = 5
+func InitSever(port int, lip2, wip2 net.IP) (*sever, error) {
+	var s = new(sever)
+	s.reSendTimes = 5
 	s.MatchTime = time.Second * 30
 	s.TimeOut = time.Second * 3
 	s.ExtPorts = 5
@@ -44,7 +44,7 @@ func InitSever(port int, lip2, wip2 net.IP) (*sconn, error) {
 	return s, nil
 }
 
-func (s *sconn) RunSever() error {
+func (s *sever) RunSever() error {
 
 	if s.conn1, err = net.ListenUDP("udp", &net.UDPAddr{IP: s.lip1, Port: s.s1}); err != nil {
 		panic(err)

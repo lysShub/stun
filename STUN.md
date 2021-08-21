@@ -44,7 +44,7 @@ NAT类型判断流程。使用资源：
 | 90                           | sever2:S1 | client:C1 | Juuid:90    | sever使用第二IP回复client，如果client能收到此数据包，则公网IP(180)，否则具有防火墙的公网IP(190) |
 | 100                          | sever:S1  | client:C1 | Juuid:100   | 表示服务器执行了90                                           |
 | 110                          | sever:S1  | client:C1 | Juuid:110   | 服务器告知客户端执行120                                      |
-| 120                          | client:C1 | sever2:S1 | Juuid:120   | 服务器收到此数据包后；判断IP和10的网关IP是否相同，如果不相同250，否则继续判断和10的网关端口是否相连，相连则完全顺序对称NAT(230)，否则IP限制顺序对称NAT(240)。 |
+| 120                          | client:C1 | sever2:S1 | Juuid:120   | 服务器收到此数据包后；判断IP和10的网关IP是否相同，如果不相同250；否则继续判断和10的网关端口是否相等或相连，相等为IP锥形顺序对称形(237)，相连则完全顺序对称NAT(230)，否则IP限制顺序对称NAT(240)。 |
 |                              |           |           |             |                                                              |
 | <font color='red'>180</font> | client:C1 | sever:S1  | Juuid:180   | 公网IP                                                       |
 | <font color='red'>190</font> | client:C1 | sever:S1  | Juuid:190   | 具有防火墙的公网IP                                           |
@@ -52,13 +52,25 @@ NAT类型判断流程。使用资源：
 | <font color='red'>210</font> | client:C1 | sever:S1  | Juuid:210   | IP限制锥形NAT                                                |
 | <font color='red'>220</font> | client:C1 | sever:S1  | Juuid:220   | 端口限制锥形NAT                                              |
 | <font color='red'>230</font> | sever:S1  | client:C1 | Juuid:230   | 完全顺序对称NAT                                              |
+| <font color='red'>237</font> | sever:S1  | client:C1 | Juuid:237   | IP锥形顺序对称NAT                                            |
 | <font color='red'>240</font> | sever:S1  | client:C1 | Juuid:240   | IP限制顺序对称NAT                                            |
 | <font color='red'>25?</font> | sever:S1  | client:C1 | Juuid:250   | 无序对称NAT（250：同IP随机端口，251：随机IP随机端口）        |
 
-1. 对称NAT
+1. 关于对称NAT
    - **顺序对称NAT**：对于新建对称NAT映射，无论本地地址是多少，分配的NAT网关的IP是相同的，且端口有相邻的规律。
-         - <font style="font-size:small;">**完全顺序对称NAT**</font>：新建顺序对称NAT映射时，请求不同的目的地地址，NAT网关分配相邻的端口
-             - <font style="font-size:small">**IP限制顺序对称NAT**</font>：新建顺序对称NAT映射时；只有请求的目的地IP相同，那么NAT网关分配的端口才是相邻的；如果IP不同，那么NAT网关分配的端口是随机的。
+
+     
+
+       - <font style="font-size:small;">**完全顺序对称NAT**</font>：新建顺序对称NAT映射时，请求不同的目的地地址，NAT网关分配相邻的端口
+
+         
+
+       - <font style="font-size:small;">**IP锥形顺序对称NAT**</font>：四元组中raddr.IP不变时, 新建映射分配的NAT端口为a、a+1、a+2... ; 此时如果新建raddr.IP改变时, 分配的NAT端口为a
+
+         
+
+       - <font style="font-size:small">**IP限制顺序对称NAT**</font>：新建顺序对称NAT映射时；只有请求的目的地IP相同，那么NAT网关分配的端口才是相邻的；如果IP不同，那么NAT网关分配的端口是随机的。
+       <font>&nbsp;</font>
    - **无序对称NAT**：对称NAT中除了顺序对称NAT外都是无序对称NAT。对于新建对称NAT映射，无论什么情况，新映射的NAT网关端口是随机的，甚至新映射的NAT网关的IP是随机的（此种网络常见于校园网，完全屏蔽了种子下载）。
 
 ​	2. 流程中有使用超时机制，在糟糕的网络环境下可能存在误判的概率。

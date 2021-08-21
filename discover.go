@@ -17,7 +17,7 @@ import (
 
 // discoverSever
 // 参数为第一端口和第二端口，接收到的数据，对方的地址
-func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
+func (s *sever) discoverSever(da []byte, raddr *net.UDPAddr) {
 	// conn1, conn2, ip2conn *net.UDPConn,
 
 	if len(da) < 18 {
@@ -117,7 +117,7 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 				if err = s.send(s.conn1, append(juuid, 251), natAddr1); e.Errlog(err) {
 					return
 				}
-				s.dbj.U(string(juuid), "step", "251")
+				s.dbj.U(string(juuid), "step", "251") // NAT有IP池
 			}
 
 		} else if step == 60 {
@@ -138,6 +138,7 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 
 			fmt.Println("请求：10：", natAddr1.IP, natAddr1.Port)
 			fmt.Println("请求：120：", raddr.IP, raddr.Port)
+			fmt.Println("120 laddr")
 			fmt.Println("--------------------------------------------------")
 
 			if !net.IP.Equal(raddr.IP, natAddr1.IP) {
@@ -146,14 +147,18 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 				s.dbj.U(string(juuid), "step", "251")
 
 			} else {
+				if raddr.Port-natAddr1.Port == 0 {
+					// IP锥形顺序对称NAT
+					s.send(s.conn1, append(juuid, 237), natAddr1)
+					s.dbj.U(string(juuid), "step", "237")
 
-				if raddr.Port-natAddr1.Port > 0 && raddr.Port-natAddr1.Port <= 10 {
-
+				} else if raddr.Port-natAddr1.Port > 0 && raddr.Port-natAddr1.Port <= s.ExtPorts {
+					// 完全顺序对称NAT
 					s.send(s.conn1, append(juuid, 230), natAddr1)
 					s.dbj.U(string(juuid), "step", "230")
 
 				} else {
-
+					// IP限制顺序对称NAT
 					s.send(s.conn1, append(juuid, 240), natAddr1)
 					s.dbj.U(string(juuid), "step", "240")
 				}
@@ -166,7 +171,7 @@ func (s *sconn) discoverSever(da []byte, raddr *net.UDPAddr) {
 }
 
 // DiscoverCliet
-func (s *cconn) DiscoverCliet() (int, error) {
+func (s *client) DiscoverCliet() (int, error) {
 	// 返回代码:
 	// -1 错误
 	//  0 无响应
@@ -328,7 +333,7 @@ func (s *cconn) DiscoverCliet() (int, error) {
 
 // 回复
 func (s *STUN) send(conn *net.UDPConn, da []byte, raddr *net.UDPAddr) error {
-	for i := 0; i < s.Iterate; i++ {
+	for i := 0; i < s.reSendTimes; i++ {
 		if raddr != nil {
 			if _, err := conn.WriteToUDP(da, raddr); err != nil {
 				return err

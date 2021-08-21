@@ -9,9 +9,9 @@ import (
 	"github.com/lysShub/stun/internal/com"
 )
 
-func InitClient(port int, sever net.IP) (*cconn, error) {
-	var s = new(cconn)
-	s.Iterate = 5
+func InitClient(port int, sever net.IP) (*client, error) {
+	var s = new(client)
+	s.reSendTimes = 5
 	s.MatchTime = time.Second * 30
 	s.TimeOut = time.Second * 3
 	s.ExtPorts = 5
@@ -29,7 +29,7 @@ func InitClient(port int, sever net.IP) (*cconn, error) {
 
 // RunClient
 //  确保id随机
-func (s *cconn) RunClient(port int, id [16]byte) error {
+func (s *client) RunClient(port int, id [16]byte) error {
 	var natType int
 	if natType, err = s.DiscoverCliet(); err != nil {
 		return err

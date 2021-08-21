@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-func (s *sconn) throughSever() {
+func (s *sever) throughSever() {
 
 }
 
-func (s *cconn) throughClient(lNatType int, id [16]byte) error {
+func (s *client) throughClient(lNatType int, id [16]byte) error {
 	if err = checkNatType(lNatType); err != nil {
 		return err
 	}
