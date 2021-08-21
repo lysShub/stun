@@ -65,7 +65,7 @@ NAT类型判断流程。使用资源：
 
          
 
-       - <font style="font-size:small;">**IP锥形顺序对称NAT**</font>：四元组中raddr.IP不变时, 新建映射分配的NAT端口为a、a+1、a+2... ; 此时如果新建raddr.IP改变时, 分配的NAT端口为a
+       - <font style="font-size:small;">**IP锥形顺序对称NAT**</font>：四元组中raddr.IP不变时, 新建映射分配的NAT端口为a、a+1、a+2... ; 此时新建映射的raddr.IP改变时, 分配的NAT端口为a。次类型穿透行为等价于完全锥形NAT
 
          
 
