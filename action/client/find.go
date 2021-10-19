@@ -41,8 +41,8 @@ func (c *client) findClient(port int) (int, error) {
 			}
 		}
 	}()
-	/* 初始化完成 */
 
+	/* 初始化完成 */
 	// 10
 	if err = c.Send(conn, append(juuid, 10, uint8(port>>8), uint8(port)), severAddr1); err != nil {
 		return -1, err
