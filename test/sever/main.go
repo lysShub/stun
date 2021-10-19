@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/lysShub/stun/internal/action/sever"
+	"stun/action/sever"
 )
 
 func main() {

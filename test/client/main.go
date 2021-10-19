@@ -3,17 +3,13 @@ package main
 import (
 	"fmt"
 	"net"
-
-	"github.com/lysShub/stun/internal/action/client"
 )
 
 func main() {
+	_, err := net.DialUDP("udp", &net.UDPAddr{IP: nil, Port: 19986}, &net.UDPAddr{IP: net.ParseIP("4.4.4.4"), Port: 19986})
+	fmt.Println(err)
 
-	/* client */
-	fmt.Println("开始l")
-
-	if _, err := client.Run(19986, net.ParseIP("114.116.254.26")); err != nil {
-		fmt.Println(err)
+	if false {
+		// windows.Accept(nil)
 	}
-
 }

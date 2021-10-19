@@ -9,7 +9,7 @@ import (
 	"net"
 
 	"github.com/lysShub/mapdb"
-	"github.com/lysShub/stun/config"
+	"stun/config"
 )
 
 //  无论客户端还是服务器都需要两个IP(IP1和IP2)。同一个VPS绑定两张网卡；这两张网卡的私网IP分别是a、b，公网IP分别是x，y。则在客户端IP1、IP2分别配置为x、y，在服务器IP1、IP2分别配置为a、b。
