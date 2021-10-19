@@ -5,9 +5,10 @@ import (
 	"net"
 	"sync"
 
+	"stun/config"
+	"stun/internal/com"
+
 	"github.com/lysShub/mapdb"
-	"github.com/lysShub/stun/config"
-	"github.com/lysShub/stun/internal/com"
 )
 
 // sever Sever Conn

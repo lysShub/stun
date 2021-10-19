@@ -2,7 +2,6 @@
 ## explicit
 # github.com/lysShub/e v0.1.4
 ## explicit
-github.com/lysShub/e
 # github.com/lysShub/mapdb v0.1.3
 ## explicit
 github.com/lysShub/mapdb
@@ -11,5 +10,9 @@ github.com/lysShub/tq
 # github.com/satori/go.uuid v1.2.0
 ## explicit
 github.com/satori/go.uuid
+# golang.org/x/sys v0.0.0-20211015200801-69063c4bb744
+## explicit
+golang.org/x/sys/internal/unsafeheader
+golang.org/x/sys/windows
 # gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 ## explicit

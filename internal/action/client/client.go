@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/lysShub/stun/config"
-	"github.com/lysShub/stun/internal/com"
+	"stun/config"
+	"stun/internal/com"
 )
 
 // client Client Conn

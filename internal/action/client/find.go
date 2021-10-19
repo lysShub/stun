@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lysShub/stun/config"
-	"github.com/lysShub/stun/internal/com"
+	"stun/config"
+	"stun/internal/com"
 )
 
 // findClient 发现NAT类型
